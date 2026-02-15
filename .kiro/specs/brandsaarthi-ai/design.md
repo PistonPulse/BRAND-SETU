@@ -1,19 +1,19 @@
-# Design Document: BrandSaarthi AI
+# Design Document: BrandSetu
 
 ## Overview
 
-BrandSaarthi AI is a serverless, AI-powered digital marketing assistant built on AWS infrastructure. The system leverages Amazon Bedrock for content generation, Amazon Translate for multilingual support, Amazon Comprehend for tone analysis, DynamoDB for data persistence, and AWS Amplify for frontend hosting and authentication.
+BrandSetu is an AI-powered Brand Bridge Platform built on modern, high-performance infrastructure. The system leverages Gemini 2.0 (multimodal reasoning), Llama 3.3 (text generation), and Flux.1 (image synthesis) for content creation, LangGraph for autonomous agent orchestration, Groq LPU Engine for <300ms inference speed, Supabase PostgreSQL with pgvector for RAG-powered brand memory, and Vercel for global edge hosting.
 
-The architecture follows a microservices pattern with clear separation between the presentation layer (React frontend), API layer (API Gateway + Lambda), AI services layer (Bedrock, Translate, Comprehend), and data layer (DynamoDB). This design ensures scalability, cost-efficiency, and maintainability while supporting the needs of millions of small businesses across India.
+The architecture follows a modern agentic pattern with clear separation between the client tier (Next.js frontend), application orchestration tier (FastAPI + LangGraph), cognitive processing tier (multimodal AI models), data & memory tier (PostgreSQL + pgvector RAG), and distribution tier (Unified Social APIs). This design ensures real-time performance, enterprise-grade security, and cost-efficiency while serving Indian startups.
 
 ### Key Design Principles
 
-1. **Serverless-First**: Eliminate idle costs and enable automatic scaling
-2. **AI-Native**: Leverage managed AI services rather than building custom models
-3. **Mobile-First**: Responsive design optimized for mobile devices
-4. **Multilingual by Design**: Language support as a core architectural concern
-5. **Cost-Conscious**: Optimize for minimal operational costs to serve price-sensitive market
-6. **Simple UX**: Intuitive interface requiring minimal technical knowledge
+1. **Brand-Aware AI Engine**: Persistent brand memory using Knowledge Graph and RAG
+2. **Real-Time Performance**: <300ms latency using Groq LPU inference
+3. **Autonomous Workflows**: LangGraph-powered multi-agent orchestration
+4. **Enterprise Security**: Bank-level encryption with private brand data storage
+5. **Cost-Conscious**: 90% cost reduction vs agencies (₹25,000/mo vs ₹4-12L/mo)
+6. **Startup-First UX**: One voice, every platform - set brand once, generate everywhere
 
 ## Architecture
 
@@ -21,63 +21,82 @@ The architecture follows a microservices pattern with clear separation between t
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                         User Layer                               │
+│                      CLIENT TIER                                 │
 │  ┌──────────────────────────────────────────────────────────┐  │
-│  │  React Frontend (AWS Amplify Hosted)                      │  │
-│  │  - Dashboard UI                                            │  │
-│  │  - Brand Profile Forms                                     │  │
+│  │  Next.js Web App (Hosted on Vercel)                      │  │
+│  │  - Responsive UI (Tailwind CSS)                           │  │
+│  │  - Brand Profile Setup                                     │  │
 │  │  - Content Generation Interface                            │  │
-│  │  - Content History Viewer                                  │  │
+│  │  - 7-Day Smart Scheduler                                   │  │
+│  │  - Analytics Dashboard                                     │  │
+│  │  - Global Edge Hosting                                     │  │
 │  └──────────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────────┘
                               │
-                              │ HTTPS
+                              │ HTTPS/REST
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                      API Gateway Layer                           │
+│            APPLICATION ORCHESTRATION TIER                        │
 │  ┌──────────────────────────────────────────────────────────┐  │
-│  │  Amazon API Gateway (REST API)                            │  │
+│  │  FastAPI Gateway (Python Server)                          │  │
+│  │  - Request Routing                                         │  │
 │  │  - Authentication & Authorization                          │  │
 │  │  - Rate Limiting                                           │  │
-│  │  - Request Validation                                      │  │
+│  └──────────────────────────────────────────────────────────┘  │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │  LangGraph Autonomous Agent Orchestrator                  │  │
+│  │  - Multi-Agent Workflow Management                         │  │
+│  │  - Stateful Orchestration                                  │  │
+│  │  - Brand Context Injection                                 │  │
+│  │  - Content Generation Pipeline                             │  │
+│  └──────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              │ Inference Requests
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                  COGNITIVE PROCESSING TIER                       │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐         │
+│  │   Gemini 2.0 │  │  Llama 3.3   │  │   Flux.1     │         │
+│  │  Multimodal  │  │     Text     │  │    Image     │         │
+│  │  Reasoning   │  │  Generation  │  │  Synthesis   │         │
+│  └──────────────┘  └──────────────┘  └──────────────┘         │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │  Groq LPU Engine (<300ms Inference Speed)                │  │
+│  │  - High-Velocity Text Inference                           │  │
+│  │  - Real-Time Content Generation                           │  │
 │  └──────────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────────┘
                               │
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                    Application Layer (Lambda)                    │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐         │
-│  │ Auth Handler │  │ Brand Profile│  │   Content    │         │
-│  │              │  │   Handler    │  │  Generator   │         │
-│  └──────────────┘  └──────────────┘  └──────────────┘         │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐         │
-│  │  Scheduler   │  │   Campaign   │  │   History    │         │
-│  │   Handler    │  │   Suggester  │  │   Handler    │         │
-│  └──────────────┘  └──────────────┘  └──────────────┘         │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                      AI Services Layer                           │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐         │
-│  │   Amazon     │  │   Amazon     │  │   Amazon     │         │
-│  │   Bedrock    │  │  Translate   │  │  Comprehend  │         │
-│  │ (Claude 3)   │  │              │  │              │         │
-│  └──────────────┘  └──────────────┘  └──────────────┘         │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                        Data Layer                                │
+│                  DATA & MEMORY TIER                              │
 │  ┌──────────────────────────────────────────────────────────┐  │
-│  │  Amazon DynamoDB                                          │  │
-│  │  - Users Table                                            │  │
-│  │  - BrandProfiles Table                                    │  │
-│  │  - ContentHistory Table                                   │  │
-│  │  - Campaigns Table                                        │  │
+│  │  Supabase PostgreSQL (Auth & App Data)                   │  │
+│  │  - User Authentication                                     │  │
+│  │  - Brand Profiles                                          │  │
+│  │  - Content History                                         │  │
+│  │  - Analytics Data                                          │  │
+│  └──────────────────────────────────────────────────────────┘  │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │  pgvector (RAG Brand Memory)                              │  │
+│  │  - Brand Knowledge Graph                                   │  │
+│  │  - Vector Search for Brand Context                         │  │
+│  │  - Grounding AI in Brand DNA                               │  │
+│  └──────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    DISTRIBUTION TIER                             │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │  Unified Social API Gateway                               │  │
+│  │  - LinkedIn API                                            │  │
+│  │  - X (Twitter) API                                         │  │
+│  │  - Instagram Graph API                                     │  │
+│  │  - One-Click Multi-Channel Publishing                      │  │
 │  └──────────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -85,30 +104,84 @@ The architecture follows a microservices pattern with clear separation between t
 ### Component Interaction Flow
 
 **Content Generation Flow:**
-1. User submits content generation request via React frontend
-2. API Gateway validates request and forwards to Content Generator Lambda
-3. Content Generator retrieves Brand Profile from DynamoDB
-4. Content Generator calls Amazon Bedrock with brand context and platform requirements
-5. If non-English language selected, Content Generator calls Amazon Translate
-6. Content Generator calls Amazon Comprehend to verify tone alignment
-7. Generated content is stored in ContentHistory table
-8. Response returned to frontend with generated Marketing Post
+1. User submits content generation request via Next.js frontend
+2. FastAPI Gateway validates request and routes to LangGraph orchestrator
+3. LangGraph retrieves Brand Profile and Brand Knowledge Graph from Supabase + pgvector
+4. LangGraph constructs brand-aware prompt with RAG context
+5. Groq LPU Engine executes inference using Gemini 2.0 or Llama 3.3 (<300ms)
+6. Platform-specific formatting applied based on target (LinkedIn/Twitter/Instagram/Email)
+7. Generated content stored in Supabase with metadata
+8. Response returned to frontend with one-click copy and publish options
 
 **Brand Profile Creation Flow:**
-1. User submits brand details via frontend form
-2. API Gateway forwards to Brand Profile Handler Lambda
-3. Brand Profile Handler validates and structures data
-4. Brand Profile Handler calls Amazon Comprehend to analyze tone preferences
-5. Brand Profile stored in BrandProfiles table with userId as partition key
-6. Confirmation returned to frontend
+1. User submits brand details (vision, tone, audience, values) via frontend
+2. FastAPI Gateway forwards to Brand Profile Handler
+3. Brand Knowledge Graph extracts key attributes and relationships
+4. pgvector stores brand embeddings for RAG retrieval
+5. Brand Profile saved in Supabase PostgreSQL with row-level security
+
+## Technology Stack
+
+### Frontend Experience
+- **Next.js**: App router for responsive, high-performance UI
+- **Tailwind CSS**: Utility-first styling for rapid development
+- **Vercel**: Global edge hosting with automatic deployments
+
+### Agentic Core (Backend)
+- **FastAPI**: Python server for managing autonomous workflows
+- **LangGraph**: Stateful orchestration of multi-agent systems
+
+### Cognitive Layer (AI Models)
+- **Gemini 2.0**: Multimodal reasoning (text + vision)
+- **Llama 3.3**: High-velocity text generation
+- **Flux.1**: Generative media synthesis for images
+
+### Data & Memory (RAG)
+- **Supabase**: PostgreSQL database for auth and app data
+- **pgvector**: Vector search for brand context grounding
+
+### Inference Speed
+- **Groq**: LPU Engine providing <300ms latency for real-time feel
+
+### Distribution Gateway
+- **Unified Social APIs**: One-click multi-channel publishing to LinkedIn, Instagram, Twitter
+
+## Cost Structure
+
+### Monthly Production Burn Rate: ₹25,000
+
+**Intelligence Core (₹13,000 - 52%)**
+- Direct value: 100+ autonomous posts & multi-agent reasoning
+- Replaces: ₹40,000/mo social media intern
+- ROI: 3x cost savings
+
+**Infrastructure (₹9,000 - 36%)**
+- Backend + Database + Scheduler: ₹4,000 (16%)
+- Database Storage: ₹3,000 (12%)
+- Scheduler Automation: ₹2,000 (8%)
+- Supports: 10+ concurrent users with zero downtime
+
+**Security & Access (₹3,000 - 12%)**
+- Auth + Frontend: ₹2,000 (8%)
+- Security Measures: ₹1,000 (4%)
+- Enterprise-grade data protection out of the box
+
+**Hackathon Cost: ₹0** (Free tier: Vercel/Supabase/Groq)
+**Scale-Up Cost: ₹25,000** (Serving 50+ B2B clients)
+
+### Value Proposition
+- **Traditional Agency**: ₹4-12L/month
+- **BrandSetu**: ₹25,000/month
+- **Cost Reduction**: 90%
+- **Time-to-Market**: 10x faster
 
 ## Components and Interfaces
 
-### Frontend Components
+### Frontend Components (Next.js + Tailwind CSS)
 
 #### 1. Authentication Module
 - **Responsibility**: Handle user sign-up, login, and session management
-- **Technology**: AWS Amplify Auth (Cognito)
+- **Technology**: Supabase Auth
 - **Key Functions**:
   - `signUp(email, password)`: Create new user account
   - `signIn(email, password)`: Authenticate existing user
@@ -120,10 +193,10 @@ The architecture follows a microservices pattern with clear separation between t
 - **Key Functions**:
   - Display quick access to all features
   - Show weekly content generation statistics
-  - Provide navigation to content generation, scheduler, campaigns, history
+  - Provide navigation to content generation, scheduler, analytics
 
-#### 3. Brand Profile Form
-- **Responsibility**: Collect and update brand identity information
+#### 3. Brand Profile Setup
+- **Responsibility**: One-time brand identity configuration
 - **Key Functions**:
   - `submitBrandProfile(profileData)`: Send brand details to backend
   - `updateBrandProfile(profileData)`: Modify existing brand profile

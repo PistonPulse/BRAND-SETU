@@ -1,27 +1,34 @@
-# Requirements Document: BrandSaarthi AI
+# Requirements Document: BrandSetu
 
 ## Introduction
 
-BrandSaarthi AI is an AI-powered digital marketing assistant designed specifically for Indian businesses, including startups, MSMEs, and local businesses across tier-2 and tier-3 cities. The system addresses the critical gap in accessible, affordable, and culturally relevant digital marketing tools by providing multilingual, platform-specific content generation that maintains consistent brand identity.
+BrandSetu is an AI-powered Brand Bridge Platform designed specifically for Indian startups and small businesses. The system solves India's startup marketing gap by providing an affordable, intelligent solution that replaces expensive marketing agencies (₹4-12L/mo) with AI-powered content generation at 90% cost reduction.
 
-The MVP focuses on enabling businesses to generate ready-to-use marketing content across multiple platforms (Instagram, LinkedIn, Twitter/X, WhatsApp Business, Email) in multiple Indian languages (Hindi, Marathi, Tamil, Hinglish, English) while maintaining their unique brand voice and tone.
+Unlike traditional AI generators with no brand memory and manual prompt dependency, BrandSetu features:
+- **AI Brand Knowledge Graph**: Maps brand DNA and learns relationships for contextual content
+- **Persistent Brand Memory**: Maintains consistent brand voice across all platforms
+- **Intelligent Automation**: Auto-generates on-brand posts for every platform
+- **Strategic Frameworks**: Built-in marketing strategy and planning
+- **Enterprise-Grade Security**: Bank-level encryption with private brand data storage
+
+The platform enables startups to set their brand identity once in Hindi or English, then auto-generate brand-consistent posts for LinkedIn, Twitter, Instagram, and Email — delivering 10x faster time-to-market with 100% brand consistency.
 
 ## Glossary
 
-- **BrandSaarthi_System**: The complete AI digital marketing assistant platform
-- **Content_Generator**: The AI-powered component that creates marketing content
-- **Brand_Profile**: A structured representation of a business's identity, including vision, tone, audience, and industry
-- **Brand_Voice_Model**: An AI model trained or configured to generate content matching a specific brand's tone and style
-- **Platform_Adapter**: Component that formats content according to platform-specific requirements
-- **Language_Translator**: Component that translates content into regional Indian languages
-- **Content_Scheduler**: Component that suggests optimal posting times and weekly content plans
-- **Campaign_Suggester**: Component that recommends festival and regional event-based campaigns
-- **User**: A business owner, marketer, or entrepreneur using the system
-- **Marketing_Post**: A complete, ready-to-use piece of content for a specific platform
-- **Content_History**: A record of all previously generated marketing content
-- **Festival_Campaign**: Marketing content suggestions tied to Indian festivals and regional events
-- **CTA**: Call-to-action element in marketing content
-- **MSME**: Micro, Small, and Medium Enterprises
+- **BrandSetu_System**: The complete AI Brand Bridge Platform
+- **Brand_Knowledge_Graph**: AI-powered system that maps brand DNA and learns relationships for contextual content generation
+- **Brand_Memory**: Persistent storage of brand identity, voice, values, and tone that maintains consistency across all content
+- **Content_Generator**: AI-powered component using Gemini 2.0 (multimodal) and Llama 3.3 (text) for content creation
+- **Brand_Profile**: Structured representation of business identity including vision, tone, audience, and values
+- **Platform_Adapter**: Component that formats content for LinkedIn, Twitter, Instagram, and Email
+- **Autonomous_Agent**: LangGraph-powered orchestrator managing multi-agent workflows for content generation
+- **Smart_Scheduler**: 7-day AI content calendar that auto-fills weekly posting schedule
+- **Analytics_Dashboard**: Real-time performance tracking and marketing strategy optimization
+- **User**: Startup founder, marketer, or entrepreneur using the platform
+- **Marketing_Post**: Ready-to-post content for specific platform with one-click publishing
+- **Content_History**: Record of all generated marketing content with performance metrics
+- **RAG_System**: Retrieval-Augmented Generation using pgvector for brand context grounding
+- **Groq_Engine**: LPU-powered inference engine providing <300ms latency for real-time content generation
 
 ## Requirements
 
@@ -38,133 +45,136 @@ The MVP focuses on enabling businesses to generate ready-to-use marketing conten
 5. WHEN a user provides incorrect login credentials, THE BrandSaarthi_System SHALL reject the login attempt and display an error message
 6. WHEN a user is authenticated, THE BrandSaarthi_System SHALL maintain the session securely using token-based authentication
 
-### Requirement 2: Brand Profile Creation
+### Requirement 2: Brand Profile Creation with AI Knowledge Graph
 
-**User Story:** As a business owner, I want to input my business details and brand identity, so that the AI can generate content that reflects my brand's unique voice and values.
-
-#### Acceptance Criteria
-
-1. WHEN a new user completes authentication, THE BrandSaarthi_System SHALL prompt the user to create a Brand_Profile
-2. WHEN a user enters brand details (business name, industry, vision, target audience, tone), THE BrandSaarthi_System SHALL validate and store the Brand_Profile in persistent storage
-3. WHEN a user submits incomplete brand details (missing required fields), THE BrandSaarthi_System SHALL prevent submission and indicate which fields are required
-4. WHEN a user saves a Brand_Profile, THE BrandSaarthi_System SHALL create a Brand_Voice_Model based on the provided information within 5 seconds
-5. WHEN a user updates their Brand_Profile, THE BrandSaarthi_System SHALL regenerate the Brand_Voice_Model to reflect the changes
-6. THE BrandSaarthi_System SHALL support brand tone options including: professional, casual, friendly, authoritative, playful, inspirational
-
-### Requirement 3: AI Content Generation
-
-**User Story:** As a business owner, I want to generate platform-specific marketing content in my preferred language, so that I can maintain consistent brand presence across multiple channels.
+**User Story:** As a startup founder, I want to set my brand identity once in Hindi or English, so that the AI can learn my brand DNA and generate consistent content across all platforms.
 
 #### Acceptance Criteria
 
-1. WHEN a user selects a platform (Instagram, LinkedIn, Twitter/X, WhatsApp Business, Email) and requests content generation, THE Content_Generator SHALL produce a Marketing_Post within 10 seconds
-2. WHEN generating content, THE Content_Generator SHALL incorporate the user's Brand_Voice_Model to maintain consistent tone and style
-3. WHEN a user selects a target language (Hindi, Marathi, Tamil, Hinglish, English), THE Content_Generator SHALL produce content in the specified language
-4. WHEN generating content for Instagram, THE Platform_Adapter SHALL format the content with appropriate length (up to 2200 characters), emoji suggestions, and hashtag recommendations
-5. WHEN generating content for LinkedIn, THE Platform_Adapter SHALL format the content with professional tone, appropriate length (up to 3000 characters), and industry-relevant hashtags
-6. WHEN generating content for Twitter/X, THE Platform_Adapter SHALL format the content within 280 characters with relevant hashtags
-7. WHEN generating content for WhatsApp Business, THE Platform_Adapter SHALL format the content as concise messages with clear CTAs
-8. WHEN generating content for Email campaigns, THE Platform_Adapter SHALL format the content with subject line, body, and CTA
-9. WHEN generating content, THE Content_Generator SHALL include at least one relevant CTA suggestion
-10. WHEN content generation fails due to AI service errors, THE BrandSaarthi_System SHALL log the error and display a user-friendly error message
+1. WHEN a new user completes authentication, THE BrandSetu_System SHALL prompt the user to create a Brand_Profile with vision, tone, audience, and values
+2. WHEN a user enters brand details, THE Brand_Knowledge_Graph SHALL map the brand DNA and learn relationships for contextual content generation within 5 seconds
+3. WHEN a user submits incomplete brand details, THE BrandSetu_System SHALL prevent submission and indicate required fields
+4. WHEN a user saves a Brand_Profile, THE Brand_Memory SHALL store the brand identity persistently using pgvector RAG for future content generation
+5. WHEN a user updates their Brand_Profile, THE Brand_Knowledge_Graph SHALL update relationships and maintain consistency across all future content
+6. THE BrandSetu_System SHALL support brand language input in both Hindi and English
+7. THE Brand_Knowledge_Graph SHALL extract and store key brand attributes including tone, values, target audience, and unique positioning
 
-### Requirement 4: Multilingual Content Support
+### Requirement 3: AI Content Generation in Seconds
 
-**User Story:** As a business owner serving regional markets, I want to generate marketing content in Indian languages, so that I can connect with my local audience in their preferred language.
+**User Story:** As a startup founder, I want to generate ready-to-post content for LinkedIn, Twitter, Instagram, and Email in seconds, so that I can maintain consistent brand presence without manual effort.
 
 #### Acceptance Criteria
 
-1. THE BrandSaarthi_System SHALL support content generation in Hindi, Marathi, Tamil, Hinglish, and English
-2. WHEN a user requests content in a regional language, THE Language_Translator SHALL produce grammatically correct and culturally appropriate translations
-3. WHEN translating content, THE Language_Translator SHALL preserve the brand tone and intent from the original content
-4. WHEN generating Hinglish content, THE Content_Generator SHALL appropriately mix Hindi and English words in a natural, conversational style
-5. WHEN translation fails, THE BrandSaarthi_System SHALL fall back to English content generation and notify the user
+1. WHEN a user selects a platform (LinkedIn, Twitter, Instagram, Email) and goal, THE Content_Generator SHALL produce brand-consistent copy in seconds using Groq AI (<300ms latency)
+2. WHEN generating content, THE Autonomous_Agent SHALL use Brand_Knowledge_Graph to ensure 100% brand consistency automatically
+3. WHEN content is generated, THE BrandSetu_System SHALL provide one-click copy functionality and weekly calendar integration
+4. WHEN generating content for LinkedIn, THE Platform_Adapter SHALL format professional posts with appropriate length and industry-relevant context
+5. WHEN generating content for Twitter, THE Platform_Adapter SHALL format concise posts optimized for engagement
+6. WHEN generating content for Instagram, THE Platform_Adapter SHALL generate captions with visual content suggestions
+7. WHEN generating content for Email, THE Platform_Adapter SHALL create subject lines, body copy, and CTAs
+8. THE Content_Generator SHALL use Gemini 2.0 for multimodal reasoning and Llama 3.3 for high-velocity text generation
+9. WHEN content generation fails, THE BrandSetu_System SHALL log the error and display user-friendly guidance
 
-### Requirement 5: Weekly Content Scheduling
+### Requirement 4: Bilingual Support (Hindi & English)
 
-**User Story:** As a business owner with limited time, I want to receive a weekly content posting plan, so that I can maintain consistent social media presence without daily planning effort.
-
-#### Acceptance Criteria
-
-1. WHEN a user requests a weekly content plan, THE Content_Scheduler SHALL generate a 7-day posting schedule with platform-specific content
-2. WHEN generating a weekly plan, THE Content_Scheduler SHALL distribute content across different platforms to ensure balanced presence
-3. WHEN generating a weekly plan, THE Content_Scheduler SHALL suggest optimal posting times based on platform best practices
-4. WHEN a weekly plan is generated, THE BrandSaarthi_System SHALL store the plan in the user's Content_History
-5. THE Content_Scheduler SHALL generate at least 5 Marketing_Posts per week across selected platforms
-
-### Requirement 6: Festival and Regional Campaign Suggestions
-
-**User Story:** As a business owner, I want to receive campaign ideas for upcoming festivals and regional events, so that I can capitalize on seasonal marketing opportunities.
+**User Story:** As an Indian startup founder, I want to set my brand voice in Hindi or English once, so that every post stays consistent in my chosen language.
 
 #### Acceptance Criteria
 
-1. WHEN a user accesses the campaign suggestions feature, THE Campaign_Suggester SHALL display upcoming Indian festivals and regional events for the next 30 days
-2. WHEN a user selects a festival or event, THE Campaign_Suggester SHALL generate at least 3 campaign ideas relevant to the user's industry and brand
-3. WHEN generating festival campaigns, THE Content_Generator SHALL create culturally appropriate content that respects the significance of the festival
-4. THE Campaign_Suggester SHALL support major Indian festivals including: Diwali, Holi, Eid, Christmas, Pongal, Durga Puja, Ganesh Chaturthi, Onam, Navratri
-5. WHEN generating regional campaign content, THE Campaign_Suggester SHALL consider the user's target audience location and cultural context
+1. THE BrandSetu_System SHALL support brand profile creation in both Hindi and English
+2. WHEN a user sets their brand voice in Hindi, THE Content_Generator SHALL produce all content in Hindi while maintaining brand consistency
+3. WHEN a user sets their brand voice in English, THE Content_Generator SHALL produce all content in English while maintaining brand consistency
+4. THE Brand_Knowledge_Graph SHALL understand and preserve brand context regardless of input language
+5. WHEN generating content, THE BrandSetu_System SHALL maintain the selected language across all platforms automatically
 
-### Requirement 7: Content History and Management
+### Requirement 5: Smart Scheduler with 7-Day AI Content Calendar
 
-**User Story:** As a business owner, I want to view and access my previously generated content, so that I can reuse, reference, or track my marketing materials.
-
-#### Acceptance Criteria
-
-1. WHEN a user generates content, THE BrandSaarthi_System SHALL automatically save the Marketing_Post to the user's Content_History with timestamp and metadata
-2. WHEN a user accesses the dashboard, THE BrandSaarthi_System SHALL display the Content_History with the most recent content first
-3. WHEN viewing Content_History, THE BrandSaarthi_System SHALL display platform type, language, generation date, and content preview for each Marketing_Post
-4. WHEN a user selects a Marketing_Post from history, THE BrandSaarthi_System SHALL display the full content with a copy-to-clipboard function
-5. WHEN a user copies content, THE BrandSaarthi_System SHALL provide visual confirmation of successful copy action
-6. THE BrandSaarthi_System SHALL retain Content_History for at least 90 days
-
-### Requirement 8: User Dashboard
-
-**User Story:** As a business owner, I want a centralized dashboard to access all features and view my content, so that I can efficiently manage my marketing activities.
+**User Story:** As a busy startup founder, I want a 7-day AI content calendar that auto-fills my week, so that I can maintain consistent posting without daily planning.
 
 #### Acceptance Criteria
 
-1. WHEN an authenticated user accesses the platform, THE BrandSaarthi_System SHALL display a dashboard with navigation to all core features
-2. WHEN viewing the dashboard, THE BrandSaarthi_System SHALL display quick access buttons for: content generation, weekly planner, festival campaigns, and content history
-3. WHEN viewing the dashboard, THE BrandSaarthi_System SHALL display a summary of recent activity including number of posts generated this week
-4. THE BrandSaarthi_System SHALL provide a mobile-responsive dashboard that functions on devices with screen widths from 320px to 1920px
-5. WHEN a user navigates between features, THE BrandSaarthi_System SHALL maintain consistent UI patterns and navigation structure
+1. WHEN a user requests a weekly content plan, THE Smart_Scheduler SHALL generate a 7-day posting schedule with platform-specific content
+2. WHEN generating a weekly plan, THE Smart_Scheduler SHALL distribute content across LinkedIn, Twitter, Instagram, and Email to ensure balanced presence
+3. WHEN generating a weekly plan, THE Smart_Scheduler SHALL suggest optimal posting times based on platform best practices and audience engagement patterns
+4. WHEN a weekly plan is generated, THE BrandSetu_System SHALL provide one-click copy functionality for each post
+5. THE Smart_Scheduler SHALL auto-fill the calendar with at least 7-10 posts per week across selected platforms
+6. WHEN viewing the calendar, THE BrandSetu_System SHALL display visual timeline with platform icons and post previews
 
-### Requirement 9: System Performance and Scalability
+### Requirement 6: Native Platform Integration with One-Click Publishing
 
-**User Story:** As a platform user, I want fast and reliable content generation, so that I can quickly create marketing materials without delays.
-
-#### Acceptance Criteria
-
-1. WHEN a user requests content generation, THE BrandSaarthi_System SHALL respond within 10 seconds under normal load conditions
-2. WHEN the system experiences high concurrent usage (1000+ simultaneous users), THE BrandSaarthi_System SHALL maintain response times within 15 seconds
-3. THE BrandSaarthi_System SHALL support horizontal scaling to handle increasing user load
-4. WHEN storing user data, THE BrandSaarthi_System SHALL use DynamoDB with appropriate partition keys to ensure efficient data retrieval
-5. THE BrandSaarthi_System SHALL implement caching strategies for frequently accessed Brand_Voice_Models to reduce latency
-
-### Requirement 10: Data Security and Privacy
-
-**User Story:** As a business owner, I want my business information and generated content to be secure, so that my brand identity and marketing strategies remain confidential.
+**User Story:** As a startup founder, I want one-click publishing to LinkedIn, Instagram, Twitter, and more, so that I can distribute content instantly without manual copying.
 
 #### Acceptance Criteria
 
-1. WHEN storing user credentials, THE BrandSaarthi_System SHALL encrypt passwords using industry-standard hashing algorithms
-2. WHEN transmitting data between client and server, THE BrandSaarthi_System SHALL use HTTPS encryption
-3. WHEN storing Brand_Profiles and Content_History, THE BrandSaarthi_System SHALL associate data with authenticated user IDs to prevent unauthorized access
-4. WHEN a user requests their data, THE BrandSaarthi_System SHALL provide access only to data owned by that authenticated user
-5. THE BrandSaarthi_System SHALL implement rate limiting to prevent abuse and ensure fair resource allocation
-6. WHEN API calls are made to AWS services, THE BrandSaarthi_System SHALL use IAM roles with least-privilege access policies
+1. THE BrandSetu_System SHALL integrate with Unified Social APIs for multi-channel publishing
+2. WHEN a user generates content, THE BrandSetu_System SHALL provide one-click publishing to LinkedIn, Twitter, and Instagram
+3. WHEN a user clicks publish, THE Distribution_Gateway SHALL post content directly to the selected platform using official APIs
+4. WHEN publishing fails, THE BrandSetu_System SHALL display error message and allow manual copy as fallback
+5. THE BrandSetu_System SHALL track publishing status and provide confirmation when posts go live
+6. WHEN viewing content history, THE BrandSetu_System SHALL display which posts were published and to which platforms
 
-### Requirement 11: Cost Optimization
+### Requirement 7: Smart Analytics Dashboard
 
-**User Story:** As a platform operator, I want to minimize infrastructure costs while maintaining quality service, so that the platform remains financially sustainable for serving small businesses.
+**User Story:** As a startup founder, I want to track performance and optimize my marketing strategy in real-time, so that I can improve engagement and ROI.
 
 #### Acceptance Criteria
 
-1. THE BrandSaarthi_System SHALL use serverless architecture (AWS Lambda) to eliminate idle resource costs
-2. WHEN making AI generation requests, THE BrandSaarthi_System SHALL implement request batching where possible to reduce API call costs
-3. THE BrandSaarthi_System SHALL implement content caching for common generation patterns to reduce redundant AI API calls
-4. WHEN storing data in DynamoDB, THE BrandSaarthi_System SHALL use on-demand billing mode to optimize costs for variable workloads
-5. THE BrandSaarthi_System SHALL monitor and log AWS service usage to identify cost optimization opportunities
+1. WHEN a user accesses the dashboard, THE Analytics_Dashboard SHALL display real-time performance metrics across all platforms
+2. WHEN viewing analytics, THE BrandSetu_System SHALL show engagement rates, reach, clicks, and conversions for each post
+3. WHEN analyzing performance, THE Analytics_Dashboard SHALL provide AI-powered insights and recommendations for optimization
+4. THE Analytics_Dashboard SHALL track content performance across LinkedIn, Twitter, Instagram, and Email
+5. WHEN viewing historical data, THE BrandSetu_System SHALL display trends and patterns over time (weekly, monthly, quarterly)
+6. THE Analytics_Dashboard SHALL provide exportable reports for stakeholder presentations
+
+### Requirement 8: User Dashboard with Quick Access
+
+**User Story:** As a startup founder, I want a centralized dashboard to access all features quickly, so that I can efficiently manage my marketing activities.
+
+#### Acceptance Criteria
+
+1. WHEN an authenticated user accesses the platform, THE BrandSetu_System SHALL display a dashboard with quick access to: content generation, weekly planner, analytics, and brand profile
+2. WHEN viewing the dashboard, THE BrandSetu_System SHALL display activity summary showing posts generated this week and performance highlights
+3. THE BrandSetu_System SHALL provide a mobile-responsive dashboard that functions on devices with screen widths from 320px to 1920px
+4. WHEN a user navigates between features, THE BrandSetu_System SHALL maintain consistent UI patterns using Tailwind CSS utility-first design
+5. THE Dashboard SHALL display upcoming scheduled posts and recent performance metrics at a glance
+
+### Requirement 9: System Performance with Groq Inference Speed
+
+**User Story:** As a platform user, I want real-time content generation with <300ms latency, so that I can create marketing materials instantly without delays.
+
+#### Acceptance Criteria
+
+1. WHEN a user requests content generation, THE BrandSetu_System SHALL respond within 300ms using Groq LPU Engine for inference
+2. WHEN the system experiences high concurrent usage (10+ simultaneous users), THE BrandSetu_System SHALL maintain response times under 500ms
+3. THE BrandSetu_System SHALL support horizontal scaling using FastAPI Python server architecture
+4. WHEN storing user data, THE BrandSetu_System SHALL use Supabase PostgreSQL with pgvector for efficient RAG retrieval
+5. THE BrandSetu_System SHALL implement caching strategies for Brand_Knowledge_Graph to reduce latency
+
+### Requirement 10: Enterprise-Grade Security
+
+**User Story:** As a startup founder, I want bank-level encryption and private brand data storage, so that my brand identity and marketing strategies remain confidential.
+
+#### Acceptance Criteria
+
+1. WHEN storing user credentials, THE BrandSetu_System SHALL encrypt passwords using industry-standard hashing algorithms (Auth + Frontend security layer)
+2. WHEN transmitting data between client and server, THE BrandSetu_System SHALL use HTTPS encryption
+3. WHEN storing Brand_Profiles and Content_History, THE BrandSetu_System SHALL use Supabase PostgreSQL with row-level security to prevent unauthorized access
+4. WHEN a user requests their data, THE BrandSetu_System SHALL provide access only to data owned by that authenticated user
+5. THE BrandSetu_System SHALL implement enterprise-grade data protection with bank-level encryption
+6. THE BrandSetu_System SHALL ensure brand data stays private and secure, never shared or used for training other models
+
+### Requirement 11: Cost Optimization for Startups
+
+**User Story:** As a startup founder, I want 90% cost reduction compared to agencies, so that I can afford professional marketing on a limited budget.
+
+#### Acceptance Criteria
+
+1. THE BrandSetu_System SHALL provide unlimited content generation at ₹13,000/month (Intelligence Core), replacing ₹40,000/mo social media interns
+2. THE BrandSetu_System SHALL support 10+ concurrent users with zero downtime using infrastructure costing ₹9,000/month
+3. THE BrandSetu_System SHALL implement efficient AI model usage with Groq inference to minimize API costs
+4. THE BrandSetu_System SHALL use Supabase PostgreSQL for cost-effective data storage
+5. THE BrandSetu_System SHALL leverage free-tier services (Vercel, Supabase, Groq) during hackathon/prototype phase
+6. THE Production_Cost SHALL not exceed ₹25,000/month total (52% AI APIs, 16% Backend, 12% Database, 8% Scheduler, 8% Frontend, 4% Auth)
 
 ### Requirement 12: Error Handling and Reliability
 
