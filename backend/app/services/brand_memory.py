@@ -231,15 +231,18 @@ async def retrieve_brand_context(query: str, k: int = 3) -> str:
         LLM prompt.  Returns an empty string if no documents are found or
         if an error occurs (logged separately).
 
-    HOW — Retrieval pipeline
-        1. `query` is embedded by the same MiniLM model used at ingestion.
-        2. `similarity_search()` calls the `match_brand_memory` SQL RPC
-           function via Supabase's PostgREST layer.
+    HOW — Retrieval pipeline (direct RPC, bypasses LangChain vector store)
+        1. `query` is embedded directly via the module-level MiniLM model.
+        2. We call the `match_brand_memory` SQL RPC function directly on the
+           Supabase client, avoiding the LangChain SupabaseVectorStore wrapper
+           that triggers the `AttributeError: 'SyncRPCFilterRequestBuilder'
+           object has no attribute 'params'` bug on mismatched library
+           versions.
         3. pgvector computes cosine distance between the query vector and
            every row's `embedding` column, returning the `k` closest rows.
-        4. Each row comes back as a LangChain `Document` with
-           `.page_content` (the original text) and `.metadata` (JSONB).
-        5. We join the page_content values with Markdown separators so the
+        4. Each row comes back as a plain dict with `content` and `metadata`
+           keys (as defined by the SQL function's RETURNS TABLE).
+        5. We join the content values with Markdown separators so the
            resulting string reads naturally when injected into prompts.
 
     WHY return Markdown (not a list of Documents)?
@@ -249,41 +252,63 @@ async def retrieve_brand_context(query: str, k: int = 3) -> str:
         any further formatting logic in the agent nodes.
     """
     try:
-        vector_store = get_vector_store()
+        # Step 1 — embed the query directly with the module-level MiniLM model.
+        # WHAT:  Produces a 384-dim float list matching the `VECTOR(384)` column.
+        # WHY not go through SupabaseVectorStore?  The LangChain wrapper calls
+        #        `.params` on the Supabase filter builder object, which no longer
+        #        exists in newer versions of `supabase-py`, causing an
+        #        AttributeError at runtime.  Calling embed_query() + rpc()
+        #        directly avoids the broken code path entirely.
+        query_embedding: List[float] = embeddings.embed_query(query)
 
-        # WHAT:  `similarity_search` returns a list of `Document` objects,
-        #        each with `.page_content` (str) and `.metadata` (dict).
-        # HOW:   Internally calls `match_brand_memory` RPC via Supabase REST.
-        # WHY k=k?  The caller controls the trade-off between context richness
-        #           and prompt token budget.
-        docs = vector_store.similarity_search(query, k=k)
+        # Step 2 — call the Supabase RPC function directly.
+        # WHAT:  `match_brand_memory` is a SQL function that accepts the query
+        #        vector and a row-count limit, then returns ranked rows via
+        #        cosine similarity (see module docstring for the DDL).
+        # HOW:   `.rpc(fn, params).execute()` posts to
+        #        /rest/v1/rpc/match_brand_memory and returns an APIResponse
+        #        whose `.data` attribute is a list of dicts.
+        response = (
+            get_supabase_client()
+            .rpc(
+                "match_brand_memory",
+                {"query_embedding": query_embedding, "match_count": k},
+            )
+            .execute()
+        )
 
-        if not docs:
+        rows = response.data or []
+
+        if not rows:
             logger.info(
                 "No brand memory documents found for query=%r", query
             )
             return ""
 
-        # WHAT:  Format the retrieved documents into a cohesive Markdown block.
+        # Step 3 — format the retrieved rows into a cohesive Markdown block.
+        # WHAT:  Each row dict has at minimum `content` (str) and `metadata`
+        #        (dict) keys as declared in the SQL RETURNS TABLE clause.
         # HOW:   Each document becomes a numbered section under a heading.
         #        We include the metadata source (if present) as a citation,
-        #        then the raw page_content so agents can read it as a brief.
+        #        then the raw content so agents can read it as a brief.
         # WHY Markdown?  The Creator and Researcher system prompts are already
         #        Markdown-rich; consistent formatting helps LLMs parse
         #        section boundaries correctly.
         sections: List[str] = []
-        for i, doc in enumerate(docs, start=1):
-            source = doc.metadata.get("source", f"guideline-{i}")
+        for i, row in enumerate(rows, start=1):
+            metadata: Dict = row.get("metadata") or {}
+            source: str = metadata.get("source", f"guideline-{i}")
+            content: str = (row.get("content") or "").strip()
             sections.append(
                 f"### Brand Memory [{i}] — {source}\n\n"
-                f"{doc.page_content.strip()}"
+                f"{content}"
             )
 
         context = "\n\n---\n\n".join(sections)
 
         logger.info(
             "Retrieved %d brand memory docs for query=%r | total_chars=%d",
-            len(docs),
+            len(rows),
             query,
             len(context),
         )
