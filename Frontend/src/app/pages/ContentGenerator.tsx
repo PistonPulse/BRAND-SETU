@@ -1,16 +1,46 @@
 import { motion, AnimatePresence } from 'motion/react';
-import { Sparkles, Copy, RotateCw, Save, Instagram, Linkedin, MessageSquare, Twitter, Mail, Facebook, Check } from 'lucide-react';
+import {
+  Sparkles, Copy, RotateCw, Save, Instagram, Linkedin,
+  MessageSquare, Twitter, Mail, Facebook, Check,
+  Loader2, ImageIcon, AlertCircle,
+} from 'lucide-react';
 import { useState } from 'react';
+import { apiClient } from '@/lib/api';
+import type { PlatformDraft, BackendPlatform } from '@/lib/api';
 
 export function ContentGenerator() {
+  // ── UI selection state ──────────────────────────────────────────────────
   const [platform, setPlatform] = useState('Instagram');
-  const [language, setLanguage] = useState('English');
+  const [language, setLanguage] = useState('🇬🇧 English');
   const [goal, setGoal] = useState('');
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [generatedContent, setGeneratedContent] = useState('');
+  const [topic, setTopic] = useState('');
   const [copied, setCopied] = useState(false);
   const [saved, setSaved] = useState(false);
 
+  // ── API / async state ───────────────────────────────────────────────────
+  const [isLoading, setIsLoading] = useState(false);
+  const [isImageLoading, setIsImageLoading] = useState(false);
+  const [generatedData, setGeneratedData] = useState<Record<string, PlatformDraft> | null>(null);
+  const [generatedImage, setGeneratedImage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  // ── Derived helpers ─────────────────────────────────────────────────────
+  /**
+   * Maps UI platform labels → backend lowercase keys.
+   * WhatsApp / Email / Facebook are not supported by the pipeline;
+   * lookups for those will return undefined, showing the warning banner.
+   */
+  const PLATFORM_KEY: Record<string, BackendPlatform> = {
+    Instagram: 'instagram',
+    LinkedIn: 'linkedin',
+    'Twitter/X': 'twitter',
+  };
+
+  /** Draft for the currently selected platform (undefined if not generated). */
+  const currentDraft: PlatformDraft | undefined =
+    generatedData?.[PLATFORM_KEY[platform]];
+
+  // ── Static option lists ─────────────────────────────────────────────────
   const platforms = [
     { name: 'Instagram', icon: Instagram, color: 'from-pink-500 to-purple-500', textColor: 'text-pink-500' },
     { name: 'LinkedIn', icon: Linkedin, color: 'from-blue-600 to-blue-400', textColor: 'text-blue-600' },
@@ -21,12 +51,8 @@ export function ContentGenerator() {
   ];
 
   const languages = [
-    '🇬🇧 English',
-    '🇮🇳 हिंदी',
-    '🇮🇳 मराठी',
-    '🇮🇳 ગુજરાતી',
-    '🇮🇳 தமிழ்',
-    '🇮🇳 తెలుగు',
+    '🇬🇧 English', '🇮🇳 हिंदी', '🇮🇳 मराठी',
+    '🇮🇳 ગુજરાતી', '🇮🇳 தமிழ்', '🇮🇳 తెలుగు',
   ];
 
   const goals = [
@@ -40,33 +66,62 @@ export function ContentGenerator() {
     'Event announcement',
   ];
 
-  const sampleContent = {
-    Instagram: "🌟 Exciting News! 🌟\n\nWe're thrilled to introduce our latest collection that's been crafted with love just for you! ✨\n\nSwipe through to discover:\n✅ Stunning new designs\n✅ Premium quality materials\n✅ Affordable pricing\n✅ Limited time offers\n\nTap the link in bio to shop now! 🛍️\n\n#NewCollection #ShopLocal #SupportSmallBusiness #Fashion #Style #BrandSetu",
-    LinkedIn: "We're excited to share some exciting news with our professional network!\n\nOur team has been working tirelessly to bring you innovative solutions that drive real results. Here's what we've achieved:\n\n• 150% growth in customer satisfaction\n• Expanded our service offerings\n• Built stronger partnerships\n\nThank you for being part of our journey. Let's continue to grow together!\n\n#BusinessGrowth #Innovation #Success #Entrepreneurship",
-    WhatsApp: "✨ Good morning! ✨\n\nWe have something special for you today!\n\n🎁 Use code: SPECIAL20 for 20% OFF\n⏰ Valid until midnight tonight\n🚀 Free delivery on all orders\n\nReply 'YES' to place your order or visit our store today!\n\nThank you for your continued support! 🙏",
-  };
+  // ── Handlers ────────────────────────────────────────────────────────────
 
   const handleGenerate = async () => {
     if (!goal) return;
-    
-    setSaved(false);
-    setIsGenerating(true);
-    setGeneratedContent('');
-    
-    // Simulate typing animation
-    const content = sampleContent[platform as keyof typeof sampleContent] || sampleContent.Instagram;
-    const words = content.split(' ');
-    
-    for (let i = 0; i < words.length; i++) {
-      await new Promise(resolve => setTimeout(resolve, 50));
-      setGeneratedContent(prev => prev + (i > 0 ? ' ' : '') + words[i]);
+
+    setIsLoading(true);
+    setError(null);
+    setGeneratedData(null);
+    setGeneratedImage(null);
+
+    try {
+      // Prepend the chosen language so the LLM writes in that language.
+      // English is the default — no prefix needed.
+      const languagePrefix =
+        language && !language.includes('English')
+          ? `Write this content in ${language.replace(/^\S+\s*/, '').trim()}. `
+          : '';
+
+      const response = await apiClient.generateContent({
+        // Use the detailed description as the topic; fall back to the goal.
+        // Backend key names must be lowercase literals (schema is strict).
+        topic: `${languagePrefix}${topic.trim() || goal}`,
+        platforms: ['linkedin', 'twitter', 'instagram'],
+        tone_override: goal || undefined,
+      });
+      setGeneratedData(response.final_content);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
-    
-    setIsGenerating(false);
+  };
+
+  const handleGenerateImage = async () => {
+    const imagePrompt = currentDraft?.image_prompt;
+    if (!imagePrompt) return;
+
+    setIsImageLoading(true);
+    setError(null);
+    setGeneratedImage(null);
+
+    try {
+      const response = await apiClient.generateImage(imagePrompt);
+      setGeneratedImage(response.image_base64);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'Image generation failed. Please try again.',
+      );
+    } finally {
+      setIsImageLoading(false);
+    }
   };
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(generatedContent);
+    if (!currentDraft?.text) return;
+    navigator.clipboard.writeText(currentDraft.text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -93,7 +148,7 @@ export function ContentGenerator() {
         <div className="grid lg:grid-cols-2 gap-8">
           {/* Input Panel */}
           <div className="space-y-6">
-            <motion.div 
+            <motion.div
               className="glass-card-strong rounded-3xl shadow-[0_16px_48px_rgba(0,0,0,0.1)] p-8 border border-white/40"
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -113,11 +168,10 @@ export function ContentGenerator() {
                         onClick={() => setPlatform(p.name)}
                         whileHover={{ scale: 1.05, y: -2 }}
                         whileTap={{ scale: 0.95 }}
-                        className={`p-4 rounded-2xl border-2 transition-all relative overflow-hidden ${
-                          platform === p.name
-                            ? 'border-transparent'
-                            : 'border-white/40 glass-card hover:border-[#2EC4B6]/40'
-                        }`}
+                        className={`p-4 rounded-2xl border-2 transition-all relative overflow-hidden ${platform === p.name
+                          ? 'border-transparent'
+                          : 'border-white/40 glass-card hover:border-[#2EC4B6]/40'
+                          }`}
                       >
                         {platform === p.name && (
                           <motion.div
@@ -147,11 +201,10 @@ export function ContentGenerator() {
                       onClick={() => setLanguage(lang)}
                       whileHover={{ scale: 1.05, y: -2 }}
                       whileTap={{ scale: 0.95 }}
-                      className={`p-3 rounded-xl border-2 transition-all text-sm font-medium relative ${
-                        language === lang
-                          ? 'border-transparent bg-gradient-to-r from-[#2EC4B6] to-[#4D9DE0] text-white shadow-[0_8px_24px_rgba(46,196,182,0.3)]'
-                          : 'border-white/40 glass-card text-[#64748B] hover:border-[#2EC4B6]/40'
-                      }`}
+                      className={`p-3 rounded-xl border-2 transition-all text-sm font-medium relative ${language === lang
+                        ? 'border-transparent bg-gradient-to-r from-[#2EC4B6] to-[#4D9DE0] text-white shadow-[0_8px_24px_rgba(46,196,182,0.3)]'
+                        : 'border-white/40 glass-card text-[#64748B] hover:border-[#2EC4B6]/40'
+                        }`}
                     >
                       {lang}
                     </motion.button>
@@ -174,11 +227,15 @@ export function ContentGenerator() {
                 </select>
               </div>
 
-              {/* Additional Context */}
+              {/* Additional Details / Topic */}
               <div className="mb-6">
-                <label className="block text-[#0F172A] mb-3 font-medium">Additional Details (Optional)</label>
+                <label className="block text-[#0F172A] mb-3 font-medium">
+                  Additional Details <span className="text-[#94A3B8] font-normal">(Optional)</span>
+                </label>
                 <textarea
-                  placeholder="Add any specific details, products, or context to customize your content..."
+                  value={topic}
+                  onChange={(e) => setTopic(e.target.value)}
+                  placeholder="Add any specific details, products, or context to customise your content..."
                   rows={4}
                   className="w-full px-4 py-3 glass-card border-2 border-white/40 rounded-xl focus:border-[#2EC4B6] focus:outline-none transition-all resize-none text-[#0F172A]"
                 />
@@ -187,16 +244,15 @@ export function ContentGenerator() {
               {/* Generate Button */}
               <motion.button
                 onClick={handleGenerate}
-                disabled={!goal || isGenerating}
-                whileHover={goal && !isGenerating ? { scale: 1.02, y: -2 } : {}}
-                whileTap={goal && !isGenerating ? { scale: 0.98 } : {}}
-                className={`w-full py-4 rounded-2xl transition-all flex items-center justify-center gap-3 relative overflow-hidden group ${
-                  !goal || isGenerating
-                    ? 'bg-[#E5E7EB] text-[#94A3B8] cursor-not-allowed'
-                    : 'bg-gradient-to-r from-[#2EC4B6] via-[#4D9DE0] to-[#818CF8] text-white shadow-[0_8px_32px_rgba(46,196,182,0.4)] hover:shadow-[0_16px_48px_rgba(46,196,182,0.5)]'
-                }`}
+                disabled={!goal || isLoading}
+                whileHover={goal && !isLoading ? { scale: 1.02, y: -2 } : {}}
+                whileTap={goal && !isLoading ? { scale: 0.98 } : {}}
+                className={`w-full py-4 rounded-2xl transition-all flex items-center justify-center gap-3 relative overflow-hidden group ${!goal || isLoading
+                  ? 'bg-[#E5E7EB] text-[#94A3B8] cursor-not-allowed'
+                  : 'bg-gradient-to-r from-[#2EC4B6] via-[#4D9DE0] to-[#818CF8] text-white shadow-[0_8px_32px_rgba(46,196,182,0.4)] hover:shadow-[0_16px_48px_rgba(46,196,182,0.5)]'
+                  }`}
               >
-                {goal && !isGenerating && (
+                {goal && !isLoading && (
                   <motion.div
                     className="absolute inset-0 bg-gradient-to-r from-[#818CF8] via-[#4D9DE0] to-[#2EC4B6]"
                     initial={{ x: '100%' }}
@@ -204,15 +260,10 @@ export function ContentGenerator() {
                     transition={{ duration: 0.4 }}
                   />
                 )}
-                {isGenerating ? (
+                {isLoading ? (
                   <>
-                    <motion.div
-                      animate={{ rotate: 360 }}
-                      transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                    >
-                      <Sparkles className="w-6 h-6" />
-                    </motion.div>
-                    <span className="relative z-10 font-medium">Generating Magic...</span>
+                    <Loader2 className="w-6 h-6 animate-spin" />
+                    <span className="font-medium">AI Agents Working...</span>
                   </>
                 ) : (
                   <>
@@ -224,7 +275,7 @@ export function ContentGenerator() {
             </motion.div>
 
             {/* Tips Card */}
-            <motion.div 
+            <motion.div
               className="glass-card rounded-3xl p-6 border-2 border-white/40 shadow-[0_8px_24px_rgba(0,0,0,0.06)]"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -242,23 +293,23 @@ export function ContentGenerator() {
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-[#4D9DE0] mt-1">•</span>
-                  <span>Choose the right platform for your audience</span>
+                  <span>Content is generated for LinkedIn, Twitter/X &amp; Instagram</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-[#FF9F1C] mt-1">•</span>
-                  <span>You can regenerate content multiple times</span>
+                  <span>Switch platforms in the selector to see each draft</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-[#22C55E] mt-1">•</span>
-                  <span>Save your favorites to the content library</span>
+                  <span>Use "Generate Visual" to create a matching AI image</span>
                 </li>
               </ul>
             </motion.div>
           </div>
 
-          {/* Output Panel */}
+          {/* ── Output Panel ─────────────────────────────────────────────── */}
           <div>
-            <motion.div 
+            <motion.div
               className="glass-card-strong rounded-3xl shadow-[0_16px_48px_rgba(0,0,0,0.1)] p-8 sticky top-6 border border-white/40"
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -266,7 +317,7 @@ export function ContentGenerator() {
             >
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl font-bold text-[#0F172A]">Generated Content</h2>
-                {generatedContent && !isGenerating && (
+                {currentDraft && !isLoading && (
                   <div className="flex gap-2">
                     <motion.button
                       whileHover={{ scale: 1.1, y: -2 }}
@@ -281,6 +332,7 @@ export function ContentGenerator() {
                       whileHover={{ scale: 1.1, y: -2 }}
                       whileTap={{ scale: 0.9 }}
                       onClick={handleGenerate}
+                      disabled={isLoading}
                       className="p-2.5 text-[#64748B] hover:text-[#FF9F1C] glass-card border border-white/30 rounded-xl transition-all hover:shadow-[0_0_20px_rgba(255,159,28,0.3)]"
                       title="Regenerate"
                     >
@@ -299,8 +351,68 @@ export function ContentGenerator() {
                 )}
               </div>
 
+              {/* Error Banner */}
+              <AnimatePresence>
+                {error && (
+                  <motion.div
+                    key="error"
+                    initial={{ opacity: 0, y: -8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    className="mb-5 flex items-start gap-3 bg-red-50 border-2 border-red-200 rounded-2xl p-4"
+                  >
+                    <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+                    <p className="text-sm text-red-700 font-medium">{error}</p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
               <AnimatePresence mode="wait">
-                {!generatedContent && !isGenerating ? (
+                {/* ── Loading State ── */}
+                {isLoading && (
+                  <motion.div
+                    key="loading"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="flex flex-col items-center justify-center py-16 text-center"
+                  >
+                    <div className="relative mb-6">
+                      <motion.div
+                        className="absolute inset-0 rounded-full border-4 border-[#2EC4B6]/30"
+                        animate={{ scale: [1, 1.4, 1], opacity: [0.6, 0, 0.6] }}
+                        transition={{ duration: 2, repeat: Infinity }}
+                      />
+                      <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[#2EC4B6] to-[#4D9DE0] flex items-center justify-center shadow-[0_8px_32px_rgba(46,196,182,0.4)]">
+                        <Loader2 className="w-10 h-10 text-white animate-spin" />
+                      </div>
+                    </div>
+                    <h3 className="text-lg font-bold text-[#0F172A] mb-2">
+                      AI Agents are working...
+                    </h3>
+                    <p className="text-sm text-[#64748B] max-w-xs leading-relaxed">
+                      Researching, drafting, and quality-checking your content.
+                      <br />
+                      <span className="text-[#2EC4B6] font-medium">This takes about 15–20 seconds.</span>
+                    </p>
+                    <div className="flex flex-wrap justify-center gap-2 mt-6">
+                      {['🔍 Researcher', '✍️ Creator', '🛡️ Sentinel'].map((step, i) => (
+                        <motion.span
+                          key={step}
+                          initial={{ opacity: 0, scale: 0.8 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: i * 0.3 }}
+                          className="px-3 py-1.5 text-xs font-medium bg-white/60 border border-white/40 rounded-full text-[#64748B]"
+                        >
+                          {step}
+                        </motion.span>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+
+                {/* ── Empty State ── */}
+                {!isLoading && !generatedData && (
                   <motion.div
                     key="empty"
                     initial={{ opacity: 0 }}
@@ -308,7 +420,7 @@ export function ContentGenerator() {
                     exit={{ opacity: 0 }}
                     className="flex flex-col items-center justify-center py-16 text-center"
                   >
-                    <motion.div 
+                    <motion.div
                       className="w-24 h-24 glass-card rounded-full flex items-center justify-center mb-4 border border-white/30"
                       animate={{ scale: [1, 1.05, 1] }}
                       transition={{ duration: 2, repeat: Infinity }}
@@ -316,71 +428,118 @@ export function ContentGenerator() {
                       <Sparkles className="w-12 h-12 text-[#CBD5E1]" />
                     </motion.div>
                     <h3 className="text-lg font-semibold text-[#0F172A] mb-2">Ready to Create?</h3>
-                    <p className="text-[#64748B] max-w-sm">
+                    <p className="text-[#64748B] max-w-sm text-sm">
                       Configure your settings and click "Generate Content" to create amazing posts with AI
                     </p>
                   </motion.div>
-                ) : (
+                )}
+
+                {/* ── Generated Content State ── */}
+                {!isLoading && generatedData && (
                   <motion.div
                     key="content"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="relative"
+                    className="space-y-5"
                   >
-                    <div className="min-h-[300px] p-6 glass-card rounded-2xl border border-white/30 relative overflow-hidden">
-                      <div className="whitespace-pre-wrap text-[#0F172A] leading-relaxed relative z-10">
-                        {generatedContent}
-                        {isGenerating && (
-                          <motion.span
-                            animate={{ opacity: [1, 0] }}
-                            transition={{ duration: 0.5, repeat: Infinity }}
-                            className="inline-block w-0.5 h-5 bg-gradient-to-b from-[#2EC4B6] to-[#4D9DE0] ml-1"
-                          />
-                        )}
+                    {/* Platform not generated warning */}
+                    {!currentDraft && (
+                      <div className="flex items-start gap-3 bg-amber-50 border-2 border-amber-200 rounded-2xl p-4">
+                        <AlertCircle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                        <p className="text-sm text-amber-700">
+                          No content was generated for <strong>{platform}</strong>.
+                          Switch to <strong>LinkedIn</strong>, <strong>Twitter/X</strong>, or <strong>Instagram</strong> to view your drafts.
+                        </p>
                       </div>
+                    )}
 
-                      {/* Shimmer effect during generation */}
-                      {isGenerating && (
-                        <motion.div
-                          className="absolute inset-0 pointer-events-none z-20"
-                          style={{
-                            background: 'linear-gradient(90deg, transparent, rgba(46, 196, 182, 0.15), transparent)',
-                          }}
-                          animate={{ x: ['-100%', '200%'] }}
-                          transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
-                        />
-                      )}
-                    </div>
-
-                    {/* Success Animation */}
-                    {generatedContent && !isGenerating && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 10, scale: 0.9 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        transition={{ type: "spring", stiffness: 300 }}
-                        className="mt-6 p-5 glass-card border-2 border-[#22C55E]/30 rounded-2xl flex items-start gap-3 relative overflow-hidden"
-                      >
-                        <motion.div
-                          className="absolute inset-0 bg-gradient-to-r from-[#22C55E]/5 to-transparent"
-                          animate={{ x: ['-100%', '100%'] }}
-                          transition={{ duration: 2, repeat: Infinity }}
-                        />
-                        <motion.div 
-                          className="w-8 h-8 bg-gradient-to-br from-[#22C55E] to-[#16A34A] rounded-full flex items-center justify-center flex-shrink-0 relative z-10 shadow-[0_0_20px_rgba(34,197,94,0.4)]"
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                          transition={{ type: "spring", delay: 0.2 }}
-                        >
-                          <Check className="w-5 h-5 text-white" />
-                        </motion.div>
-                        <div className="flex-1 relative z-10">
-                          <h4 className="font-semibold text-[#0F172A] mb-1">Content Generated! ✨</h4>
-                          <p className="text-sm text-[#64748B]">
-                            Your content is ready. You can copy, regenerate, or save it to your library.
+                    {currentDraft && (
+                      <>
+                        {/* Copy text box */}
+                        <div className="p-5 glass-card rounded-2xl border border-white/30 min-h-[160px]">
+                          <p className="whitespace-pre-wrap text-[#0F172A] leading-relaxed text-sm">
+                            {currentDraft.text}
                           </p>
                         </div>
-                      </motion.div>
+
+                        {/* Success pill */}
+                        <motion.div
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="flex items-center gap-3 p-4 glass-card border-2 border-[#22C55E]/30 rounded-2xl"
+                        >
+                          <div className="w-7 h-7 bg-gradient-to-br from-[#22C55E] to-[#16A34A] rounded-full flex items-center justify-center flex-shrink-0 shadow-[0_0_16px_rgba(34,197,94,0.4)]">
+                            <Check className="w-4 h-4 text-white" />
+                          </div>
+                          <p className="text-sm text-[#0F172A] font-medium">
+                            Content approved by Sentinel ✨
+                          </p>
+                        </motion.div>
+
+                        {/* ── AI Image Generator section ── */}
+                        <div className="border-t border-white/30 pt-5">
+                          <div className="flex items-center gap-2 mb-3">
+                            <ImageIcon className="w-5 h-5 text-[#4D9DE0]" />
+                            <h3 className="font-bold text-[#0F172A]">AI Image Generator</h3>
+                          </div>
+
+                          {/* Image prompt display */}
+                          <div className="mb-4">
+                            <p className="text-xs font-medium text-[#94A3B8] uppercase tracking-wide mb-1.5">
+                              Art Director's Visual Prompt
+                            </p>
+                            <div className="p-3 bg-[#F8FAFC] border border-[#E5E7EB] rounded-xl">
+                              <p className="text-xs text-[#64748B] italic leading-relaxed">
+                                {currentDraft.image_prompt}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Generate Visual button */}
+                          <motion.button
+                            onClick={handleGenerateImage}
+                            disabled={isImageLoading}
+                            whileHover={!isImageLoading ? { scale: 1.02, y: -1 } : {}}
+                            whileTap={!isImageLoading ? { scale: 0.98 } : {}}
+                            className={`w-full py-3 rounded-2xl flex items-center justify-center gap-2 font-medium transition-all ${isImageLoading
+                              ? 'bg-[#E5E7EB] text-[#94A3B8] cursor-not-allowed'
+                              : 'bg-gradient-to-r from-[#4D9DE0] to-[#818CF8] text-white shadow-[0_8px_24px_rgba(77,157,224,0.35)] hover:shadow-[0_12px_32px_rgba(77,157,224,0.5)]'
+                              }`}
+                          >
+                            {isImageLoading ? (
+                              <>
+                                <Loader2 className="w-5 h-5 animate-spin" />
+                                Generating Visual...
+                              </>
+                            ) : (
+                              <>
+                                <Sparkles className="w-5 h-5" />
+                                Generate Visual
+                              </>
+                            )}
+                          </motion.button>
+
+                          {/* Generated image */}
+                          <AnimatePresence>
+                            {generatedImage && (
+                              <motion.div
+                                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.95 }}
+                                transition={{ type: 'spring', stiffness: 260, damping: 24 }}
+                                className="mt-4"
+                              >
+                                <img
+                                  src={`data:image/png;base64,${generatedImage}`}
+                                  alt="AI Generated Graphic"
+                                  className="mt-4 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] w-full object-cover"
+                                />
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      </>
                     )}
                   </motion.div>
                 )}
