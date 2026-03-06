@@ -1,21 +1,61 @@
 import { motion } from 'motion/react';
-import { Mail, Lock, ArrowRight } from 'lucide-react';
-import { Link, useNavigate } from 'react-router';
+import { Mail, Lock, ArrowRight, User, AlertCircle, Loader2 } from 'lucide-react';
+import { Link, Navigate } from 'react-router';
 import { Logo } from '../components/Logo';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 import { useState } from 'react';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
 
 export function AuthPage() {
-  const navigate = useNavigate();
+  const { user, profile, isLoading: authLoading } = useAuth();
   const [isSignUp, setIsSignUp] = useState(false);
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // If already logged in, redirect away (no spinner — show form while loading)
+  if (!authLoading && user) {
+    return <Navigate to={profile?.is_setup_complete ? '/app' : '/setup'} replace />;
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    navigate('/setup');
+    setError(null);
+    setIsLoading(true);
+    try {
+      if (isSignUp) {
+        const { error } = await supabase.auth.signUp({
+          email, password,
+          options: { data: { full_name: fullName } },
+        });
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) {
+          if (error.message.toLowerCase().includes('invalid login credentials')) {
+            setError('Account not found or wrong password.');
+          } else {
+            setError(error.message);
+          }
+          return;
+        }
+      }
+      // onAuthStateChange will fire → AuthContext updates → Navigate triggers
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Something went wrong.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleGoogleSignIn = () => {
-    navigate('/setup');
+  const handleGoogleSignIn = async () => {
+    await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: window.location.origin + '/app' },
+    });
   };
 
   return (
@@ -78,6 +118,8 @@ export function AuthPage() {
                   <input
                     type="text"
                     placeholder="Enter your name"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
                     className="w-full px-4 py-3 bg-[#F8FAFC] border-2 border-[#E5E7EB] rounded-xl focus:border-[#2EC4B6] focus:outline-none transition-colors"
                   />
                 </div>
@@ -90,6 +132,8 @@ export function AuthPage() {
                   <input
                     type="email"
                     placeholder="your@email.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     className="w-full pl-12 pr-4 py-3 bg-[#F8FAFC] border-2 border-[#E5E7EB] rounded-xl focus:border-[#2EC4B6] focus:outline-none transition-colors"
                   />
                 </div>
@@ -102,6 +146,8 @@ export function AuthPage() {
                   <input
                     type="password"
                     placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
                     className="w-full pl-12 pr-4 py-3 bg-[#F8FAFC] border-2 border-[#E5E7EB] rounded-xl focus:border-[#2EC4B6] focus:outline-none transition-colors"
                   />
                 </div>
@@ -121,11 +167,25 @@ export function AuthPage() {
 
               <button
                 type="submit"
-                className="w-full bg-[#2EC4B6] text-white py-3.5 rounded-xl hover:bg-[#26a99d] transition-all hover:shadow-lg hover:-translate-y-0.5 flex items-center justify-center gap-2 group"
+                disabled={isLoading}
+                className="w-full bg-[#2EC4B6] text-white py-3.5 rounded-xl hover:bg-[#26a99d] transition-all hover:shadow-lg hover:-translate-y-0.5 flex items-center justify-center gap-2 group disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                {isSignUp ? 'Create Account' : 'Sign In'}
-                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                {isLoading ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <>
+                    {isSignUp ? 'Create Account' : 'Sign In'}
+                    <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                  </>
+                )}
               </button>
+
+              {error && (
+                <div className="flex items-center gap-2 text-red-600 text-sm bg-red-50 p-3 rounded-xl">
+                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  {error}
+                </div>
+              )}
             </form>
 
             <div className="relative my-8">

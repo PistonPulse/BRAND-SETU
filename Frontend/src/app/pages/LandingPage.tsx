@@ -204,7 +204,7 @@ export function LandingPage() {
               >
                 <MagneticButton>
                   <Link 
-                    to="/setup"
+                    to="/auth"
                     className="relative overflow-hidden group px-8 py-4 rounded-2xl bg-gradient-to-r from-[#2EC4B6] via-[#3DDAD7] to-[#4D9DE0] text-white font-semibold shadow-[0_16px_48px_rgba(46,196,182,0.4)] hover:shadow-[0_24px_64px_rgba(46,196,182,0.6)] transition-all duration-300 flex items-center gap-3"
                   >
                     <span className="relative z-10">Start Creating for Free</span>
@@ -713,7 +713,7 @@ export function LandingPage() {
               >
                 <MagneticButton>
                   <Link 
-                    to="/setup"
+                    to="/auth"
                     className="inline-flex items-center gap-3 glass-card-strong text-[#2EC4B6] px-10 py-5 rounded-2xl hover:shadow-[0_24px_64px_rgba(255,255,255,0.3)] transition-all group border border-white/40 font-bold text-lg"
                   >
                     Start Free Today

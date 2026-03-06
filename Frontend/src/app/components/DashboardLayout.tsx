@@ -1,12 +1,24 @@
-import { Outlet, Link, useLocation } from 'react-router';
+import { Outlet, Link, useLocation, useNavigate } from 'react-router';
 import { Home, Sparkles, Calendar, PartyPopper, FolderOpen, Settings, LogOut, Menu, X, Bell, User, ChevronRight, ArrowLeft } from 'lucide-react';
 import { Logo } from './Logo';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useAuth } from '../../contexts/AuthContext';
 
 export function DashboardLayout() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, profile, signOut } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const displayName = profile?.business_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
+  const initials = displayName.slice(0, 2).toUpperCase();
+  const email = user?.email || '';
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/auth');
+  };
 
   const navItems = [
     { path: '/app', label: 'Dashboard', icon: Home },
@@ -133,15 +145,16 @@ export function DashboardLayout() {
             whileHover={{ scale: 1.02 }}
           >
             <div className="w-10 h-10 bg-gradient-to-br from-[#2EC4B6] to-[#4D9DE0] rounded-full flex items-center justify-center text-white shadow-[0_0_20px_rgba(46,196,182,0.4)]">
-              PK
+              {initials}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="font-medium text-[#0F172A] truncate">Priya Kumar</div>
-              <div className="text-xs text-[#64748B] truncate">priya@business.com</div>
+              <div className="font-medium text-[#0F172A] truncate">{displayName}</div>
+              <div className="text-xs text-[#64748B] truncate">{email}</div>
             </div>
             <motion.button 
               whileHover={{ scale: 1.1, rotate: 10 }}
               whileTap={{ scale: 0.9 }}
+              onClick={handleSignOut}
               className="text-[#64748B] hover:text-[#EF4444] transition-colors"
             >
               <LogOut className="w-5 h-5" />
@@ -195,14 +208,14 @@ export function DashboardLayout() {
                   </motion.button>
                 )}
                 <div>
-                  <h1 className="text-xl font-bold text-[#0F172A]">Good morning, Priya! ☀️</h1>
+                  <h1 className="text-xl font-bold text-[#0F172A]">Good morning, {displayName}! ☀️</h1>
                   <p className="text-xs text-[#64748B]">Let's create something amazing</p>
                 </div>
               </div>
               
               {/* Desktop: Show greeting */}
               <div className="hidden md:block ml-6">
-                <h1 className="text-2xl font-bold text-[#0F172A]">Good morning, Priya! ☀️</h1>
+                <h1 className="text-2xl font-bold text-[#0F172A]">Good morning, {displayName}! ☀️</h1>
                 <p className="text-sm text-[#64748B]">Let's create something amazing today</p>
               </div>
             </div>
@@ -226,7 +239,7 @@ export function DashboardLayout() {
                 className="flex items-center gap-2 p-2 hover:bg-white/40 rounded-xl transition-all"
               >
                 <div className="w-8 h-8 bg-gradient-to-br from-[#2EC4B6] to-[#4D9DE0] rounded-full flex items-center justify-center text-white text-sm shadow-[0_0_20px_rgba(46,196,182,0.4)]">
-                  PK
+                  {initials}
                 </div>
               </motion.button>
             </div>

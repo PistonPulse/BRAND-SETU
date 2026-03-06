@@ -1,34 +1,99 @@
 import { motion } from 'motion/react';
-import { Sparkles, Calendar, PartyPopper, TrendingUp, Instagram, Linkedin, MessageSquare, ArrowRight } from 'lucide-react';
+import { Sparkles, Calendar, PartyPopper, TrendingUp, Instagram, Linkedin, Twitter, ArrowRight, Loader2 } from 'lucide-react';
 import { Link } from 'react-router';
+import { useState, useEffect } from 'react';
+import { getContentStats, fetchSavedContent, fetchWeeklyPlan } from '@/lib/content';
+import type { SavedContent, WeeklyPlanItem } from '@/lib/content';
+
+const PLATFORM_ICON: Record<string, typeof Instagram> = {
+  instagram: Instagram,
+  linkedin: Linkedin,
+  twitter: Twitter,
+};
+const PLATFORM_COLOR: Record<string, string> = {
+  instagram: 'text-pink-500',
+  linkedin: 'text-blue-600',
+  twitter: 'text-sky-500',
+};
+
+const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+const PLAN_COLORS: Record<string, string> = {
+  Educational: 'bg-gradient-to-r from-blue-100 to-blue-200 text-blue-700',
+  Engagement: 'bg-gradient-to-r from-purple-100 to-purple-200 text-purple-700',
+  Promotion: 'bg-gradient-to-r from-orange-100 to-orange-200 text-orange-700',
+  Story: 'bg-gradient-to-r from-pink-100 to-pink-200 text-pink-700',
+  'Behind the Scenes': 'bg-gradient-to-r from-green-100 to-green-200 text-green-700',
+  Testimonial: 'bg-gradient-to-r from-yellow-100 to-yellow-200 text-yellow-700',
+};
+
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days}d ago`;
+}
+
+function getNextFestival(): { name: string; date: string; daysLeft: number; color: string; emoji: string } {
+  const festivals = [
+    { name: 'Holi', month: 2, day: 14, color: 'from-[#FF6B9D] via-[#FF9F1C] to-[#FFB088]', emoji: '🎨' },
+    { name: 'Eid al-Fitr', month: 2, day: 30, color: 'from-[#2EC4B6] via-[#4D9DE0] to-[#818CF8]', emoji: '🌙' },
+    { name: 'Independence Day', month: 7, day: 15, color: 'from-[#FF9F1C] via-[#FFFFFF] to-[#22C55E]', emoji: '🇮🇳' },
+    { name: 'Raksha Bandhan', month: 7, day: 28, color: 'from-[#FF6B9D] via-[#A78BFA] to-[#818CF8]', emoji: '🎀' },
+    { name: 'Diwali', month: 9, day: 20, color: 'from-[#FF9F1C] via-[#FFB088] to-[#FF6B9D]', emoji: '🪔' },
+    { name: 'Christmas', month: 11, day: 25, color: 'from-[#22C55E] via-[#EF4444] to-[#22C55E]', emoji: '🎄' },
+    { name: 'New Year', month: 0, day: 1, color: 'from-[#818CF8] via-[#4D9DE0] to-[#2EC4B6]', emoji: '🎉' },
+  ];
+  const now = new Date();
+  let best = festivals[0];
+  let bestDiff = Infinity;
+  for (const f of festivals) {
+    let d = new Date(now.getFullYear(), f.month, f.day);
+    if (d.getTime() < now.getTime()) d = new Date(now.getFullYear() + 1, f.month, f.day);
+    const diff = d.getTime() - now.getTime();
+    if (diff < bestDiff) { bestDiff = diff; best = f; }
+  }
+  const daysLeft = Math.ceil(bestDiff / (1000 * 60 * 60 * 24));
+  const targetDate = new Date(now.getFullYear() + (bestDiff > 365 * 86400000 ? 1 : 0), best.month, best.day);
+  const dateStr = targetDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+  return { name: best.name, date: dateStr, daysLeft, color: best.color, emoji: best.emoji };
+}
 
 export function Dashboard() {
+  const [stats, setStats] = useState({ total: 0, thisWeek: 0 });
+  const [recentContent, setRecentContent] = useState<SavedContent[]>([]);
+  const [weekPlan, setWeekPlan] = useState<WeeklyPlanItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([
+      getContentStats(),
+      fetchSavedContent(),
+      fetchWeeklyPlan(),
+    ]).then(([s, content, plan]) => {
+      setStats(s);
+      setRecentContent(content.slice(0, 3));
+      setWeekPlan(plan);
+    }).finally(() => setLoading(false));
+  }, []);
+
+  const upcomingFestival = getNextFestival();
+
   const quickStats = [
-    { label: 'Content Generated', value: '47', change: '+12 this week', color: 'from-[#2EC4B6] via-[#4D9DE0] to-[#818CF8]', icon: Sparkles },
-    { label: 'Posts Scheduled', value: '12', change: 'Next 7 days', color: 'from-[#4D9DE0] via-[#818CF8] to-[#A78BFA]', icon: Calendar },
-    { label: 'Engagement Rate', value: '8.4%', change: '↑ 2.3% from last week', color: 'from-[#FF9F1C] via-[#FF6B9D] to-[#FFB088]', icon: TrendingUp },
+    { label: 'Content Generated', value: String(stats.total), change: `+${stats.thisWeek} this week`, color: 'from-[#2EC4B6] via-[#4D9DE0] to-[#818CF8]', icon: Sparkles },
+    { label: 'Posts Planned', value: String(weekPlan.length), change: 'This week', color: 'from-[#4D9DE0] via-[#818CF8] to-[#A78BFA]', icon: Calendar },
+    { label: 'Next Festival', value: `${upcomingFestival.daysLeft}d`, change: upcomingFestival.name, color: 'from-[#FF9F1C] via-[#FF6B9D] to-[#FFB088]', icon: TrendingUp },
   ];
 
-  const upcomingFestival = {
-    name: 'Holi',
-    date: 'March 14, 2026',
-    daysLeft: 27,
-    color: 'from-[#FF6B9D] via-[#FF9F1C] to-[#FFB088]',
-    emoji: '🎨'
-  };
-
-  const recentContent = [
-    { platform: 'Instagram', text: 'Celebrating Women\'s Day with our amazing community! 💪✨', date: '2 hours ago', icon: Instagram, color: 'text-pink-500' },
-    { platform: 'LinkedIn', text: 'Excited to announce our new product line launching next month...', date: '5 hours ago', icon: Linkedin, color: 'text-blue-600' },
-    { platform: 'WhatsApp', text: 'Good morning! Here\'s your exclusive discount code for today: SAVE20', date: '1 day ago', icon: MessageSquare, color: 'text-green-500' },
-  ];
-
-  const weekPlan = [
-    { day: 'Monday', type: 'Educational', topic: 'Tips & Tricks', color: 'bg-gradient-to-r from-blue-100 to-blue-200 text-blue-700' },
-    { day: 'Wednesday', type: 'Engagement', topic: 'Customer Story', color: 'bg-gradient-to-r from-purple-100 to-purple-200 text-purple-700' },
-    { day: 'Friday', type: 'Promotion', topic: 'Weekend Offer', color: 'bg-gradient-to-r from-orange-100 to-orange-200 text-orange-700' },
-    { day: 'Sunday', type: 'Story', topic: 'Behind the Scenes', color: 'bg-gradient-to-r from-pink-100 to-pink-200 text-pink-700' },
-  ];
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-[#2EC4B6]" />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -152,20 +217,25 @@ export function Dashboard() {
             </Link>
           </div>
           <div className="space-y-3">
-            {weekPlan.map((item, index) => (
+            {weekPlan.length === 0 ? (
+              <div className="text-center py-6 text-[#94A3B8]">
+                <p className="mb-2">No content planned yet</p>
+                <Link to="/app/planner" className="text-[#2EC4B6] hover:underline text-sm font-medium">Create your first plan →</Link>
+              </div>
+            ) : weekPlan.slice(0, 4).map((item, index) => (
               <motion.div 
-                key={index}
+                key={item.id}
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.4 + index * 0.1 }}
                 whileHover={{ x: 4, scale: 1.02 }}
                 className="flex items-center gap-3"
               >
-                <div className="w-24 text-sm font-medium text-[#64748B]">{item.day}</div>
-                <div className={`flex-1 ${item.color} rounded-2xl px-5 py-3 flex items-center justify-between shadow-sm hover:shadow-md transition-all`}>
+                <div className="w-24 text-sm font-medium text-[#64748B]">{DAY_NAMES[item.day_of_week]}</div>
+                <div className={`flex-1 ${PLAN_COLORS[item.content_type] ?? 'bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700'} rounded-2xl px-5 py-3 flex items-center justify-between shadow-sm hover:shadow-md transition-all`}>
                   <div>
-                    <div className="font-semibold">{item.type}</div>
-                    <div className="text-xs opacity-75">{item.topic}</div>
+                    <div className="font-semibold">{item.content_type}</div>
+                    <div className="text-xs opacity-75">{item.title}</div>
                   </div>
                 </div>
               </motion.div>
@@ -244,11 +314,17 @@ export function Dashboard() {
             </Link>
           </div>
           <div className="space-y-4">
-            {recentContent.map((content, index) => {
-              const Icon = content.icon;
+            {recentContent.length === 0 ? (
+              <div className="text-center py-6 text-[#94A3B8]">
+                <p className="mb-2">No content generated yet</p>
+                <Link to="/app/generate" className="text-[#2EC4B6] hover:underline text-sm font-medium">Generate your first content →</Link>
+              </div>
+            ) : recentContent.map((item, index) => {
+              const Icon = PLATFORM_ICON[item.platform] ?? Sparkles;
+              const color = PLATFORM_COLOR[item.platform] ?? 'text-gray-500';
               return (
                 <motion.div 
-                  key={index}
+                  key={item.id}
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.6 + index * 0.1 }}
@@ -260,14 +336,14 @@ export function Dashboard() {
                       whileHover={{ scale: 1.2, rotate: 10 }}
                       transition={{ type: "spring" }}
                     >
-                      <Icon className={`w-5 h-5 mt-1 ${content.color}`} />
+                      <Icon className={`w-5 h-5 mt-1 ${color}`} />
                     </motion.div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="text-sm font-semibold text-[#0F172A]">{content.platform}</span>
-                        <span className="text-xs text-[#94A3B8]">{content.date}</span>
+                        <span className="text-sm font-semibold text-[#0F172A] capitalize">{item.platform}</span>
+                        <span className="text-xs text-[#94A3B8]">{timeAgo(item.created_at)}</span>
                       </div>
-                      <p className="text-sm text-[#64748B] line-clamp-2">{content.text}</p>
+                      <p className="text-sm text-[#64748B] line-clamp-2">{item.content}</p>
                     </div>
                   </div>
                 </motion.div>

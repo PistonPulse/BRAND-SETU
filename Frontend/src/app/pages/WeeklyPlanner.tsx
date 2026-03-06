@@ -1,12 +1,26 @@
-import { motion } from 'motion/react';
-import { Calendar as CalendarIcon, Plus, Edit, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
-import { useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Calendar as CalendarIcon, Plus, Trash2, ChevronLeft, ChevronRight, Loader2, X } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { fetchWeeklyPlan, addPlanItem, deletePlanItem } from '@/lib/content';
+import type { WeeklyPlanItem } from '@/lib/content';
 
 export function WeeklyPlanner() {
   const [currentWeek, setCurrentWeek] = useState(0);
+  const [planItems, setPlanItems] = useState<WeeklyPlanItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showAddModal, setShowAddModal] = useState<number | null>(null); // day_of_week or null
+  const [newTitle, setNewTitle] = useState('');
+  const [newType, setNewType] = useState('Educational');
+  const [newTime, setNewTime] = useState('9:00 AM');
+  const [newPlatform, setNewPlatform] = useState('Instagram');
+  const [adding, setAdding] = useState(false);
+
+  useEffect(() => {
+    fetchWeeklyPlan().then(setPlanItems).finally(() => setLoading(false));
+  }, []);
 
   const weekDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-  
+
   const contentTypes = [
     { type: 'Educational', color: 'bg-blue-100 border-blue-300 text-blue-700', emoji: '📚' },
     { type: 'Engagement', color: 'bg-purple-100 border-purple-300 text-purple-700', emoji: '💬' },
@@ -16,33 +30,54 @@ export function WeeklyPlanner() {
     { type: 'Testimonial', color: 'bg-yellow-100 border-yellow-300 text-yellow-700', emoji: '⭐' },
   ];
 
-  const weeklyPlan = [
-    { day: 0, posts: [{ type: 'Educational', title: 'Monday Motivation Tips', time: '9:00 AM', platform: 'Instagram' }] },
-    { day: 1, posts: [] },
-    { day: 2, posts: [{ type: 'Engagement', title: 'Customer Poll: Favorite Product', time: '2:00 PM', platform: 'Instagram' }] },
-    { day: 3, posts: [] },
-    { day: 4, posts: [{ type: 'Promotion', title: 'Weekend Sale Announcement', time: '10:00 AM', platform: 'Instagram' }, { type: 'Promotion', title: 'Limited Offer', time: '6:00 PM', platform: 'WhatsApp' }] },
-    { day: 5, posts: [{ type: 'Story', title: 'Behind Our Success', time: '11:00 AM', platform: 'LinkedIn' }] },
-    { day: 6, posts: [{ type: 'Behind the Scenes', title: 'Sunday Workshop', time: '3:00 PM', platform: 'Instagram' }] },
-  ];
-
   const getTypeColor = (type: string) => {
-    const found = contentTypes.find(ct => ct.type === type);
-    return found || contentTypes[0];
+    return contentTypes.find(ct => ct.type === type) || contentTypes[0];
   };
 
   const getWeekDates = () => {
     const today = new Date();
-    const first = today.getDate() - today.getDay() + 1 + (currentWeek * 7);
-    const dates = [];
+    const dayOfWeek = today.getDay();
+    const monday = new Date(today);
+    monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1) + currentWeek * 7);
+    const dates: number[] = [];
     for (let i = 0; i < 7; i++) {
-      const date = new Date(today.setDate(first + i));
-      dates.push(date.getDate());
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + i);
+      dates.push(d.getDate());
     }
     return dates;
   };
 
   const weekDates = getWeekDates();
+
+  const handleAdd = async () => {
+    if (showAddModal === null || !newTitle.trim()) return;
+    setAdding(true);
+    const item = await addPlanItem({
+      day_of_week: showAddModal,
+      content_type: newType,
+      title: newTitle.trim(),
+      scheduled_time: newTime,
+      platform: newPlatform,
+    });
+    if (item) setPlanItems((prev) => [...prev, item]);
+    setAdding(false);
+    setShowAddModal(null);
+    setNewTitle('');
+  };
+
+  const handleDelete = async (id: string) => {
+    await deletePlanItem(id);
+    setPlanItems((prev) => prev.filter((p) => p.id !== id));
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-[#2EC4B6]" />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -60,6 +95,7 @@ export function WeeklyPlanner() {
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
+            onClick={() => setShowAddModal(0)}
             className="bg-[#2EC4B6] text-white px-6 py-3 rounded-2xl hover:bg-[#26a99d] transition-all shadow-lg hover:shadow-xl flex items-center gap-2"
           >
             <Plus className="w-5 h-5" />
@@ -108,41 +144,38 @@ export function WeeklyPlanner() {
               className="bg-white rounded-2xl shadow-lg overflow-hidden"
             >
               {/* Day Header */}
-              <div className={`p-4 ${index === 0 || index === 4 ? 'bg-gradient-to-br from-[#2EC4B6] to-[#4D9DE0]' : 'bg-[#F8FAFC]'} border-b-2 border-[#E5E7EB]`}>
-                <div className={`text-sm font-medium ${index === 0 || index === 4 ? 'text-white' : 'text-[#64748B]'}`}>
+              <div className={`p-4 ${planItems.some((p) => p.day_of_week === index) ? 'bg-gradient-to-br from-[#2EC4B6] to-[#4D9DE0]' : 'bg-[#F8FAFC]'} border-b-2 border-[#E5E7EB]`}>
+                <div className={`text-sm font-medium ${planItems.some((p) => p.day_of_week === index) ? 'text-white' : 'text-[#64748B]'}`}>
                   {day}
                 </div>
-                <div className={`text-2xl font-bold ${index === 0 || index === 4 ? 'text-white' : 'text-[#0F172A]'}`}>
+                <div className={`text-2xl font-bold ${planItems.some((p) => p.day_of_week === index) ? 'text-white' : 'text-[#0F172A]'}`}>
                   {weekDates[index]}
                 </div>
               </div>
 
               {/* Day Content */}
               <div className="p-3 min-h-[300px] space-y-3">
-                {weeklyPlan[index].posts.length > 0 ? (
-                  weeklyPlan[index].posts.map((post, postIndex) => {
-                    const typeColor = getTypeColor(post.type);
+                {planItems.filter((p) => p.day_of_week === index).length > 0 ? (
+                  planItems.filter((p) => p.day_of_week === index).map((post) => {
+                    const typeColor = getTypeColor(post.content_type);
                     return (
                       <motion.div
-                        key={postIndex}
+                        key={post.id}
                         whileHover={{ scale: 1.02 }}
-                        className={`${typeColor.color} border-2 ${typeColor.color.replace('bg-', 'border-')} rounded-xl p-3 cursor-pointer group`}
+                        className={`${typeColor.color} border-2 rounded-xl p-3 cursor-pointer group`}
                       >
                         <div className="flex items-start justify-between mb-2">
                           <span className="text-lg">{typeColor.emoji}</span>
                           <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-                            <button className="p-1 hover:bg-white/50 rounded">
-                              <Edit className="w-3 h-3" />
-                            </button>
-                            <button className="p-1 hover:bg-white/50 rounded">
+                            <button onClick={() => handleDelete(post.id)} className="p-1 hover:bg-white/50 rounded">
                               <Trash2 className="w-3 h-3" />
                             </button>
                           </div>
                         </div>
-                        <div className="text-xs font-medium mb-1">{post.type}</div>
+                        <div className="text-xs font-medium mb-1">{post.content_type}</div>
                         <div className="text-sm font-bold mb-2 line-clamp-2">{post.title}</div>
                         <div className="flex items-center justify-between text-xs opacity-75">
-                          <span>{post.time}</span>
+                          <span>{post.scheduled_time}</span>
                           <span>{post.platform}</span>
                         </div>
                       </motion.div>
@@ -151,6 +184,7 @@ export function WeeklyPlanner() {
                 ) : (
                   <motion.button
                     whileHover={{ scale: 1.02 }}
+                    onClick={() => setShowAddModal(index)}
                     className="w-full h-32 border-2 border-dashed border-[#CBD5E1] rounded-xl flex flex-col items-center justify-center text-[#94A3B8] hover:border-[#2EC4B6] hover:text-[#2EC4B6] hover:bg-[#F8FAFC] transition-all group"
                   >
                     <Plus className="w-8 h-8 mb-2 group-hover:scale-110 transition-transform" />
@@ -161,6 +195,61 @@ export function WeeklyPlanner() {
             </motion.div>
           ))}
         </div>
+
+        {/* Add Post Modal */}
+        <AnimatePresence>
+          {showAddModal !== null && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+              onClick={() => setShowAddModal(null)}
+            >
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                onClick={(e) => e.stopPropagation()}
+                className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-md"
+              >
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-xl font-bold text-[#0F172A]">Add to {weekDays[showAddModal]}</h3>
+                  <button onClick={() => setShowAddModal(null)} className="p-2 hover:bg-[#F8FAFC] rounded-xl"><X className="w-5 h-5" /></button>
+                </div>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-[#0F172A] mb-1">Title</label>
+                    <input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="e.g. Monday Motivation Tips" className="w-full px-4 py-3 bg-[#F8FAFC] border-2 border-[#E5E7EB] rounded-xl focus:border-[#2EC4B6] focus:outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-[#0F172A] mb-1">Content Type</label>
+                    <select value={newType} onChange={(e) => setNewType(e.target.value)} className="w-full px-4 py-3 bg-[#F8FAFC] border-2 border-[#E5E7EB] rounded-xl focus:border-[#2EC4B6] focus:outline-none">
+                      {contentTypes.map((ct) => <option key={ct.type} value={ct.type}>{ct.emoji} {ct.type}</option>)}
+                    </select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-[#0F172A] mb-1">Time</label>
+                      <select value={newTime} onChange={(e) => setNewTime(e.target.value)} className="w-full px-4 py-3 bg-[#F8FAFC] border-2 border-[#E5E7EB] rounded-xl focus:border-[#2EC4B6] focus:outline-none">
+                        {['9:00 AM','10:00 AM','11:00 AM','12:00 PM','2:00 PM','3:00 PM','6:00 PM','8:00 PM'].map((t) => <option key={t} value={t}>{t}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-[#0F172A] mb-1">Platform</label>
+                      <select value={newPlatform} onChange={(e) => setNewPlatform(e.target.value)} className="w-full px-4 py-3 bg-[#F8FAFC] border-2 border-[#E5E7EB] rounded-xl focus:border-[#2EC4B6] focus:outline-none">
+                        {['Instagram','LinkedIn','Twitter','WhatsApp'].map((p) => <option key={p} value={p}>{p}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  <button onClick={handleAdd} disabled={adding || !newTitle.trim()} className="w-full bg-[#2EC4B6] text-white py-3 rounded-xl hover:bg-[#26a99d] transition-all flex items-center justify-center gap-2 disabled:opacity-50">
+                    {adding ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Plus className="w-5 h-5" /> Add to Plan</>}
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Content Type Legend */}
         <div className="mt-8 bg-white rounded-3xl shadow-lg p-6">

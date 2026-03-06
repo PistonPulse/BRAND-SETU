@@ -1,105 +1,71 @@
 import { motion } from 'motion/react';
-import { Search, Copy, Trash2, Instagram, Linkedin, MessageSquare, Twitter, Mail, Facebook, Filter } from 'lucide-react';
-import { useState } from 'react';
+import { Search, Copy, Trash2, Instagram, Linkedin, Twitter, Filter, Loader2, Sparkles } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { fetchSavedContent, deleteContent, getContentStats } from '@/lib/content';
+import type { SavedContent } from '@/lib/content';
+
+const ICON_MAP: Record<string, typeof Instagram> = {
+  instagram: Instagram,
+  linkedin: Linkedin,
+  twitter: Twitter,
+};
+const COLOR_MAP: Record<string, string> = {
+  instagram: 'text-pink-500',
+  linkedin: 'text-blue-600',
+  twitter: 'text-sky-500',
+};
+
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7) return `${days}d ago`;
+  return `${Math.floor(days / 7)}w ago`;
+}
 
 export function ContentLibrary() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterPlatform, setFilterPlatform] = useState('All');
+  const [allContent, setAllContent] = useState<SavedContent[]>([]);
+  const [stats, setStats] = useState({ total: 0, thisWeek: 0 });
+  const [loading, setLoading] = useState(true);
+
+  const loadData = () => {
+    setLoading(true);
+    Promise.all([fetchSavedContent(), getContentStats()])
+      .then(([content, s]) => { setAllContent(content); setStats(s); })
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => { loadData(); }, []);
 
   const platforms = [
     { name: 'All', icon: Filter },
-    { name: 'Instagram', icon: Instagram },
-    { name: 'LinkedIn', icon: Linkedin },
-    { name: 'WhatsApp', icon: MessageSquare },
-    { name: 'Twitter', icon: Twitter },
-    { name: 'Email', icon: Mail },
-    { name: 'Facebook', icon: Facebook },
+    { name: 'instagram', icon: Instagram, label: 'Instagram' },
+    { name: 'linkedin', icon: Linkedin, label: 'LinkedIn' },
+    { name: 'twitter', icon: Twitter, label: 'Twitter' },
   ];
 
-  const savedContent = [
-    {
-      id: 1,
-      platform: 'Instagram',
-      content: '🌟 Exciting News! 🌟\n\nWe\'re thrilled to introduce our latest collection that\'s been crafted with love just for you! ✨',
-      date: '2 hours ago',
-      tags: ['Product Launch', 'Promotional'],
-      icon: Instagram,
-      color: 'text-pink-500'
-    },
-    {
-      id: 2,
-      platform: 'LinkedIn',
-      content: 'We\'re excited to share some exciting news with our professional network! Our team has been working tirelessly to bring you innovative solutions...',
-      date: '1 day ago',
-      tags: ['Business Update', 'Professional'],
-      icon: Linkedin,
-      color: 'text-blue-600'
-    },
-    {
-      id: 3,
-      platform: 'WhatsApp',
-      content: '✨ Good morning! ✨\n\nWe have something special for you today!\n\n🎁 Use code: SPECIAL20 for 20% OFF',
-      date: '2 days ago',
-      tags: ['Promotion', 'Discount'],
-      icon: MessageSquare,
-      color: 'text-green-500'
-    },
-    {
-      id: 4,
-      platform: 'Instagram',
-      content: '🎨 Happy Holi! 🎨\n\nMay your life be filled with colors of joy, happiness, and prosperity. Celebrate this festival with your loved ones!',
-      date: '3 days ago',
-      tags: ['Festival', 'Greeting'],
-      icon: Instagram,
-      color: 'text-pink-500'
-    },
-    {
-      id: 5,
-      platform: 'Facebook',
-      content: 'Thank you for 10,000 followers! 🎉\n\nYour support means the world to us. Here\'s to many more milestones together!',
-      date: '5 days ago',
-      tags: ['Milestone', 'Engagement'],
-      icon: Facebook,
-      color: 'text-blue-500'
-    },
-    {
-      id: 6,
-      platform: 'LinkedIn',
-      content: 'Proud to announce that we\'ve been featured in Top 10 Startups to Watch in 2026! This wouldn\'t be possible without our amazing team and supporters.',
-      date: '1 week ago',
-      tags: ['Achievement', 'PR'],
-      icon: Linkedin,
-      color: 'text-blue-600'
-    },
-    {
-      id: 7,
-      platform: 'Twitter',
-      content: 'Just launched our new product line! 🚀\n\nCheck it out and let us know what you think. Your feedback matters! 💬\n\n#ProductLaunch #Innovation',
-      date: '1 week ago',
-      tags: ['Product', 'Launch'],
-      icon: Twitter,
-      color: 'text-sky-500'
-    },
-    {
-      id: 8,
-      platform: 'Email',
-      content: 'Subject: Your Weekly Newsletter is Here!\n\nHello there! Here are this week\'s top stories, offers, and updates...',
-      date: '2 weeks ago',
-      tags: ['Newsletter', 'Email'],
-      icon: Mail,
-      color: 'text-purple-500'
-    },
-  ];
+  const uniquePlatforms = new Set(allContent.map((c) => c.platform));
 
-  const filteredContent = savedContent.filter(content => {
-    const matchesSearch = content.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         content.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
-    const matchesPlatform = filterPlatform === 'All' || content.platform === filterPlatform;
+  const filteredContent = allContent.filter((item) => {
+    const matchesSearch = item.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (item.topic ?? '').toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesPlatform = filterPlatform === 'All' || item.platform === filterPlatform;
     return matchesSearch && matchesPlatform;
   });
 
   const handleCopy = (content: string) => {
     navigator.clipboard.writeText(content);
+  };
+
+  const handleDelete = async (id: string) => {
+    await deleteContent(id);
+    setAllContent((prev) => prev.filter((c) => c.id !== id));
+    setStats((s) => ({ ...s, total: s.total - 1 }));
   };
 
   return (
@@ -116,14 +82,14 @@ export function ContentLibrary() {
         </div>
 
         {/* Stats */}
-        <div className="grid md:grid-cols-4 gap-6 mb-8">
+        <div className="grid md:grid-cols-3 gap-6 mb-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
             className="bg-white rounded-2xl p-6 shadow-lg"
           >
-            <div className="text-3xl font-bold text-[#0F172A] mb-1">47</div>
+            <div className="text-3xl font-bold text-[#0F172A] mb-1">{stats.total}</div>
             <div className="text-sm text-[#64748B]">Total Content</div>
           </motion.div>
           <motion.div
@@ -132,7 +98,7 @@ export function ContentLibrary() {
             transition={{ duration: 0.5, delay: 0.2 }}
             className="bg-white rounded-2xl p-6 shadow-lg"
           >
-            <div className="text-3xl font-bold text-[#0F172A] mb-1">12</div>
+            <div className="text-3xl font-bold text-[#0F172A] mb-1">{stats.thisWeek}</div>
             <div className="text-sm text-[#64748B]">This Week</div>
           </motion.div>
           <motion.div
@@ -141,17 +107,8 @@ export function ContentLibrary() {
             transition={{ duration: 0.5, delay: 0.3 }}
             className="bg-white rounded-2xl p-6 shadow-lg"
           >
-            <div className="text-3xl font-bold text-[#0F172A] mb-1">6</div>
-            <div className="text-sm text-[#64748B]">Platforms</div>
-          </motion.div>
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.4 }}
-            className="bg-white rounded-2xl p-6 shadow-lg"
-          >
-            <div className="text-3xl font-bold text-[#0F172A] mb-1">85%</div>
-            <div className="text-sm text-[#64748B]">Engagement Rate</div>
+            <div className="text-3xl font-bold text-[#0F172A] mb-1">{uniquePlatforms.size}</div>
+            <div className="text-sm text-[#64748B]">Platforms Used</div>
           </motion.div>
         </div>
 
@@ -172,22 +129,22 @@ export function ContentLibrary() {
 
             {/* Platform Filter */}
             <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0">
-              {platforms.map((platform) => {
-                const Icon = platform.icon;
+              {platforms.map((p) => {
+                const Icon = p.icon;
                 return (
                   <motion.button
-                    key={platform.name}
-                    onClick={() => setFilterPlatform(platform.name)}
+                    key={p.name}
+                    onClick={() => setFilterPlatform(p.name)}
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     className={`flex items-center gap-2 px-4 py-3 rounded-xl border-2 transition-all whitespace-nowrap ${
-                      filterPlatform === platform.name
+                      filterPlatform === p.name
                         ? 'bg-[#2EC4B6] text-white border-[#2EC4B6]'
                         : 'bg-white text-[#64748B] border-[#E5E7EB] hover:border-[#2EC4B6]'
                     }`}
                   >
                     <Icon className="w-4 h-4" />
-                    <span className="text-sm font-medium">{platform.name}</span>
+                    <span className="text-sm font-medium">{'label' in p ? p.label : p.name}</span>
                   </motion.button>
                 );
               })}
@@ -196,10 +153,15 @@ export function ContentLibrary() {
         </div>
 
         {/* Content Grid */}
-        {filteredContent.length > 0 ? (
+        {loading ? (
+          <div className="flex items-center justify-center h-40">
+            <Loader2 className="w-8 h-8 animate-spin text-[#2EC4B6]" />
+          </div>
+        ) : filteredContent.length > 0 ? (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredContent.map((item, index) => {
-              const Icon = item.icon;
+              const Icon = ICON_MAP[item.platform] ?? Sparkles;
+              const color = COLOR_MAP[item.platform] ?? 'text-gray-500';
               return (
                 <motion.div
                   key={item.id}
@@ -212,21 +174,18 @@ export function ContentLibrary() {
                   <div className="p-6 border-b-2 border-[#E5E7EB]">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
-                        <Icon className={`w-5 h-5 ${item.color}`} />
-                        <span className="font-medium text-[#0F172A]">{item.platform}</span>
+                        <Icon className={`w-5 h-5 ${color}`} />
+                        <span className="font-medium text-[#0F172A] capitalize">{item.platform}</span>
                       </div>
-                      <span className="text-xs text-[#64748B]">{item.date}</span>
+                      <span className="text-xs text-[#64748B]">{timeAgo(item.created_at)}</span>
                     </div>
-                    <div className="flex flex-wrap gap-2">
-                      {item.tags.map((tag, tagIndex) => (
-                        <span
-                          key={tagIndex}
-                          className="px-3 py-1 bg-[#EEF2FF] text-[#4D9DE0] text-xs rounded-full"
-                        >
-                          {tag}
+                    {item.topic && (
+                      <div className="flex flex-wrap gap-2">
+                        <span className="px-3 py-1 bg-[#EEF2FF] text-[#4D9DE0] text-xs rounded-full">
+                          {item.topic}
                         </span>
-                      ))}
-                    </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Card Content */}
@@ -249,6 +208,7 @@ export function ContentLibrary() {
                       <motion.button
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
+                        onClick={() => handleDelete(item.id)}
                         className="p-2.5 bg-[#F8FAFC] text-[#EF4444] border-2 border-[#E5E7EB] rounded-xl hover:bg-red-50 hover:border-red-300 transition-all"
                       >
                         <Trash2 className="w-4 h-4" />

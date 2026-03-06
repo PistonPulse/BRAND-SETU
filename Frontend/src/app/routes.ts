@@ -9,6 +9,7 @@ import { FestivalIdeas } from "./pages/FestivalIdeas";
 import { ContentLibrary } from "./pages/ContentLibrary";
 import { Settings } from "./pages/Settings";
 import { DashboardLayout } from "./components/DashboardLayout";
+import { ProtectedRoute } from "./components/ProtectedRoute";
 
 export const router = createBrowserRouter([
   {
@@ -25,7 +26,9 @@ export const router = createBrowserRouter([
   },
   {
     path: "/app",
-    Component: DashboardLayout,
+    Component: ProtectedRoute,
+    children: [{
+      Component: DashboardLayout,
     children: [
       {
         index: true,
@@ -52,5 +55,6 @@ export const router = createBrowserRouter([
         Component: Settings,
       },
     ],
+  }],
   },
 ]);

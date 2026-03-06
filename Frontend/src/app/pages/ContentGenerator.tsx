@@ -7,6 +7,7 @@ import {
 import { useState } from 'react';
 import { apiClient } from '@/lib/api';
 import type { PlatformDraft, BackendPlatform } from '@/lib/api';
+import { saveGeneratedContent } from '@/lib/content';
 
 export function ContentGenerator() {
   // ── UI selection state ──────────────────────────────────────────────────
@@ -92,6 +93,19 @@ export function ContentGenerator() {
         tone_override: goal || undefined,
       });
       setGeneratedData(response.final_content);
+
+      // Persist every platform draft to Supabase
+      const topicText = topic.trim() || goal;
+      const itemsToSave = Object.entries(response.final_content).map(
+        ([plat, draft]) => ({
+          platform: plat,
+          content: draft.text,
+          image_prompt: draft.image_prompt,
+          topic: topicText,
+          tone: goal || undefined,
+        }),
+      );
+      saveGeneratedContent(itemsToSave).catch(() => {/* best-effort */});
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
     } finally {
@@ -126,8 +140,16 @@ export function ContentGenerator() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (!currentDraft?.text) return;
     setSaved(true);
+    await saveGeneratedContent([{
+      platform: PLATFORM_KEY[platform] ?? platform.toLowerCase(),
+      content: currentDraft.text,
+      image_prompt: currentDraft.image_prompt,
+      topic: topic.trim() || goal,
+      tone: goal || undefined,
+    }]).catch(() => {/* best-effort */});
     setTimeout(() => setSaved(false), 2000);
   };
 

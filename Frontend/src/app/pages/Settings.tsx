@@ -1,7 +1,16 @@
 import { motion } from 'motion/react';
 import { User, Bell, Globe, Lock, CreditCard, HelpCircle, LogOut } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
+import { useNavigate } from 'react-router';
 
 export function Settings() {
+  const { signOut } = useAuth();
+  const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/auth');
+  };
   const settingsSections = [
     {
       title: 'Account',
@@ -122,7 +131,13 @@ export function Settings() {
               </div>
               <h2 className="text-xl font-bold text-red-900">Danger Zone</h2>
             </div>
-            <div className="p-6">
+            <div className="p-6 space-y-3">
+              <button
+                onClick={handleSignOut}
+                className="w-full p-4 bg-orange-50 border-2 border-orange-200 rounded-xl text-orange-600 hover:bg-orange-100 transition-colors font-medium"
+              >
+                Sign Out
+              </button>
               <button className="w-full p-4 bg-red-50 border-2 border-red-200 rounded-xl text-red-600 hover:bg-red-100 transition-colors">
                 Delete Account
               </button>

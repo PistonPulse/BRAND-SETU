@@ -1,12 +1,16 @@
 import { motion } from 'motion/react';
-import { ArrowRight, ArrowLeft, CheckCircle, Building2, Users, Target, MessageCircle, Globe } from 'lucide-react';
+import { ArrowRight, ArrowLeft, CheckCircle, Building2, Users, Target, MessageCircle, Globe, Loader2 } from 'lucide-react';
 import { useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, Navigate } from 'react-router';
 import { Logo } from '../components/Logo';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
 
 export function BusinessSetup() {
   const navigate = useNavigate();
+  const { user, profile, isLoading: authLoading, refreshProfile } = useAuth();
   const [step, setStep] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     businessName: '',
     industry: '',
@@ -14,6 +18,17 @@ export function BusinessSetup() {
     brandTone: '',
     languages: [] as string[]
   });
+
+  // Auth guards — must be after all hooks
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2EC4B6]" />
+      </div>
+    );
+  }
+  if (!user) return <Navigate to="/auth" replace />;
+  if (profile?.is_setup_complete) return <Navigate to="/app" replace />;
 
   const industries = [
     'Retail & E-commerce',
@@ -48,11 +63,37 @@ export function BusinessSetup() {
     '🇮🇳 ਪੰਜਾਬੀ (Punjabi)'
   ];
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (step < 3) {
       setStep(step + 1);
-    } else {
+      return;
+    }
+
+    // Step 3 — save to Supabase
+    setIsSubmitting(true);
+    try {
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      if (!currentUser) return;
+
+      const { error } = await supabase.from('profiles').upsert({
+        id: currentUser.id,
+        business_name: formData.businessName,
+        industry: formData.industry,
+        brand_voice: formData.brandTone,
+        languages: formData.languages,
+        is_setup_complete: true,
+      });
+
+      if (error) {
+        console.error('Profile save error:', error);
+        alert('Failed to save profile. Please try again.');
+        return;
+      }
+
+      await refreshProfile();
       navigate('/app');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -296,10 +337,17 @@ export function BusinessSetup() {
             )}
             <button
               onClick={handleNext}
-              className="flex-1 bg-[#2EC4B6] text-white py-3 rounded-xl hover:bg-[#26a99d] transition-all hover:shadow-lg hover:-translate-y-0.5 flex items-center justify-center gap-2 group"
+              disabled={isSubmitting}
+              className="flex-1 bg-[#2EC4B6] text-white py-3 rounded-xl hover:bg-[#26a99d] transition-all hover:shadow-lg hover:-translate-y-0.5 flex items-center justify-center gap-2 group disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {step === 3 ? 'Complete Setup' : 'Continue'}
-              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              {isSubmitting ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <>
+                  {step === 3 ? 'Complete Setup' : 'Continue'}
+                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </>
+              )}
             </button>
           </div>
         </motion.div>
