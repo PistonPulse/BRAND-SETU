@@ -4,12 +4,15 @@ import {
   MessageSquare, Twitter, Mail, Facebook, Check,
   Loader2, ImageIcon, AlertCircle,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import html2canvas from 'html2canvas-pro';
 import { apiClient } from '@/lib/api';
 import type { PlatformDraft, BackendPlatform } from '@/lib/api';
 import { saveGeneratedContent } from '@/lib/content';
 
 export function ContentGenerator() {
+  const posterRef = useRef<HTMLDivElement>(null);
+
   // ── UI selection state ──────────────────────────────────────────────────
   const [platform, setPlatform] = useState('Instagram');
   const [language, setLanguage] = useState('🇬🇧 English');
@@ -152,6 +155,14 @@ export function ContentGenerator() {
     }]).catch(() => {/* best-effort */});
     setTimeout(() => setSaved(false), 2000);
   };
+
+  // ── Text extraction helper for poster headlines ──────────────────────
+  const posterLines = (currentDraft?.text ?? '')
+    .split(/[.\n]+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const posterHeadline = posterLines[0] ?? '';
+  const posterSubheadline = posterLines[1] ?? '';
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -542,7 +553,7 @@ export function ContentGenerator() {
                             )}
                           </motion.button>
 
-                          {/* Generated image */}
+                          {/* Composite Poster */}
                           <AnimatePresence>
                             {generatedImage && (
                               <motion.div
@@ -550,13 +561,63 @@ export function ContentGenerator() {
                                 animate={{ opacity: 1, scale: 1, y: 0 }}
                                 exit={{ opacity: 0, scale: 0.95 }}
                                 transition={{ type: 'spring', stiffness: 260, damping: 24 }}
-                                className="mt-4"
+                                className="mt-4 space-y-4"
                               >
-                                <img
-                                  src={`data:image/png;base64,${generatedImage}`}
-                                  alt="AI Generated Graphic"
-                                  className="mt-4 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] w-full object-cover"
-                                />
+                                {/* Poster frame */}
+                                <div ref={posterRef} className="relative aspect-square overflow-hidden rounded-2xl">
+                                  {/* Background image */}
+                                  <img
+                                    src={`data:image/png;base64,${generatedImage}`}
+                                    alt="AI Generated Graphic"
+                                    className="absolute inset-0 w-full h-full object-cover"
+                                  />
+
+                                  {/* Dark gradient overlay */}
+                                  <div className="absolute inset-0 bg-gradient-to-t from-[#0F172A]/95 via-[#0F172A]/50 to-transparent" />
+
+                                  {/* Text block */}
+                                  <div className="absolute bottom-0 left-0 right-0 p-8">
+                                    {posterHeadline && (
+                                      <h2 className="text-3xl font-extrabold text-white uppercase tracking-tight">
+                                        {posterHeadline}
+                                      </h2>
+                                    )}
+                                    {posterSubheadline && (
+                                      <p className="text-sm text-gray-200 mt-2 font-medium">
+                                        {posterSubheadline}
+                                      </p>
+                                    )}
+
+                                    {/* Footer row */}
+                                    <div className="flex items-center justify-between mt-6">
+                                      <div className="flex items-center gap-2">
+                                        <Sparkles className="w-5 h-5 text-[#2EC4B6]" />
+                                        <span className="text-xs font-bold text-white tracking-wide">BrandSetu</span>
+                                      </div>
+                                      <span className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-white bg-white/20 backdrop-blur-sm rounded-full">
+                                        Link in Bio
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Download button */}
+                                <motion.button
+                                  whileHover={{ scale: 1.02, y: -1 }}
+                                  whileTap={{ scale: 0.98 }}
+                                  onClick={async () => {
+                                    if (!posterRef.current) return;
+                                    const canvas = await html2canvas(posterRef.current, { useCORS: true, scale: 2 });
+                                    const link = document.createElement('a');
+                                    link.download = 'brandsetu-poster.png';
+                                    link.href = canvas.toDataURL('image/png');
+                                    link.click();
+                                  }}
+                                  className="w-full py-3 rounded-2xl flex items-center justify-center gap-2 font-medium bg-gradient-to-r from-[#2EC4B6] to-[#4D9DE0] text-white shadow-[0_8px_24px_rgba(46,196,182,0.35)] hover:shadow-[0_12px_32px_rgba(46,196,182,0.5)] transition-all"
+                                >
+                                  <Save className="w-5 h-5" />
+                                  Download Ready-to-Post Graphic
+                                </motion.button>
                               </motion.div>
                             )}
                           </AnimatePresence>
