@@ -1,0 +1,88 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: BrandSetu API — FastAPI on AWS Lambda via Mangum
+
+# ─────────────────────────────────────────────────────────────
+# Parameters — prompted during `sam deploy --guided`
+# ─────────────────────────────────────────────────────────────
+Parameters:
+  Environment:
+    Type: String
+    Default: production
+    AllowedValues: [development, staging, production]
+
+  ApiKey:
+    Type: String
+    NoEcho: true
+
+  GroqApiKey:
+    Type: String
+    NoEcho: true
+
+  SupabaseUrl:
+    Type: String
+
+  SupabaseKey:
+    Type: String
+    NoEcho: true
+
+  HfToken:
+    Type: String
+    NoEcho: true
+
+  CorsOrigin:
+    Type: String
+    Default: "*"
+    Description: Allowed CORS origin (e.g. https://d123.cloudfront.net)
+
+Globals:
+  Function:
+    Timeout: 120
+    MemorySize: 512
+    Runtime: python3.11
+
+Resources:
+  # ── Lambda Function ────────────────────────────────────────
+  BrandSetuFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: app.main.handler
+      CodeUri: backend/
+      Description: BrandSetu FastAPI backend
+      Architectures: [x86_64]
+      Environment:
+        Variables:
+          ENVIRONMENT: !Ref Environment
+          API_KEY: !Ref ApiKey
+          GROQ_API_KEY: !Ref GroqApiKey
+          SUPABASE_URL: !Ref SupabaseUrl
+          SUPABASE_KEY: !Ref SupabaseKey
+          HF_TOKEN: !Ref HfToken
+          BACKEND_CORS_ORIGINS: !Sub '["${CorsOrigin}"]'
+          # Defaults that rarely change
+          API_V1_STR: /api/v1
+          DEFAULT_GROQ_MODEL: llama-3.3-70b-versatile
+          DEFAULT_BEDROCK_MODEL: anthropic.claude-3-5-sonnet-20241022-v2:0
+          LLM_TEMPERATURE: "0.4"
+          LLM_MAX_TOKENS: "4096"
+      Events:
+        # Catch-all proxy — every HTTP request goes to FastAPI
+        ApiCatchAll:
+          Type: HttpApi
+          Properties:
+            Path: /{proxy+}
+            Method: ANY
+        # Root path (health check)
+        ApiRoot:
+          Type: HttpApi
+          Properties:
+            Path: /
+            Method: ANY
+
+Outputs:
+  ApiEndpoint:
+    Description: API Gateway endpoint URL
+    Value: !Sub "https://${ServerlessHttpApi}.execute-api.${AWS::Region}.amazonaws.com"
+  FunctionArn:
+    Description: Lambda Function ARN
+    Value: !GetAtt BrandSetuFunction.Arn

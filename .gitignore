@@ -4,6 +4,9 @@ venv/
 
 # Environment secrets
 .env
+.env.local
+.env.production
+.env.production.local
 
 # Python
 __pycache__/
@@ -22,3 +25,7 @@ Thumbs.db
 
 # Node
 node_modules/
+
+# AWS SAM
+.aws-sam/
+samconfig.toml
